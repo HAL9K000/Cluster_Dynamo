@@ -9,7 +9,7 @@ int main()
 	double p;
 	int divisions;     // Number of random trials to be initiated and averaged over to calculate ACF.
 	int r_init=1;       // Number of random trials to be initiated per value of grid size.
-  int number_of_census=1;
+  int number_of_census=1; string s = "";
 
   cout << "Enter p (must be very, very close to p_c, '0.5927465' is a good example): ";
   cin >> p;
@@ -29,6 +29,9 @@ int main()
   cout << "Enter number of censuses per random trial (given this is SP, default is 1): ";
   cin >> number_of_census;
 
+	cout << "Enter type of scaling experiment to be performed (choose b/w 'Beta', 'Nu' or 'Gam' (default is Beta)): ";
+  cin >> s;
+
   cout << endl;
 
   vector<double> grid_pow = linspace(g1, g2, divisions);
@@ -43,7 +46,7 @@ int main()
   auto start = high_resolution_clock::now();
   // Auto variable deduces type of variable by itself.
 
-  finite_scaling_crtexp(grid_sizes, p, divisions, r_init, number_of_census);
+  finite_scaling_crtexp(grid_sizes, p, s, divisions, r_init, number_of_census);
 
   auto stop = high_resolution_clock::now();
 	auto duration = duration_cast<seconds>(stop - start);

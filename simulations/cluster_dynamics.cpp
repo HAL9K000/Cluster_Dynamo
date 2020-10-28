@@ -2481,6 +2481,124 @@ void acf_np_custom(int grid_size, float p, int divisions, int length, int lag)
 
 //------------------------------------ Finite Scaling Gimmickery ---------------------------------
 
+void output_dump(int frame[], int grid_size, int i, double p, int labels[], vector <cluster>& clusters, vector<int>& spanning_cluster_labels)
+{
+  ofstream ofputter;
+  stringstream peon, div ,g;
+
+  peon << setprecision(8) << p;
+  //p_en << setprecision(3) << p_end;
+  // setprecision() is a stream manipulator that sets the decimal precision of a variable.
+  div << i;
+  g << grid_size;
+  ofputter.open("dump/SP_p_" + peon.str() + "_G_"+ g.str() + "_i_" + div.str() + ".csv");
+  // Creating CSV file in "dump" sub-directory to store frame data
+
+  for (int j = 0; j < grid_size; ++j)
+    {
+        for (int k = 0; k < grid_size; ++k)
+        {
+            int flag=0;
+            for(int r =0 ; r < spanning_cluster_labels.size(); r++)
+            {
+              if(labels[j*grid_size + k] == spanning_cluster_labels[r])
+              {
+                //If current node is part of spanning cluster, trip up the flag variable
+                flag=1;
+              }
+            }
+            if ( flag == 1)
+            {
+              //Node is part of spanning cluster, outdata as 2.
+              ofputter << -1 << ',';
+            }
+            else
+            { ofputter << labels[j*grid_size + k] << ','; }
+        }
+        ofputter << '\n';
+    }
+  ofputter.close();
+  }
+
+zd_coordinates binsearch_p_c(double p, int frame[], int grid_size, int num, int seed)
+{
+
+  // Using binary search to find first instance of grid percolation.
+  double p_old= 2*p;
+  for( int i=0; i < num; i++)
+  {
+    int labels[grid_size*grid_size] = {0}; // initialize all sites of label lattice to 0
+    vector <cluster> clusters;
+    find_clusters_free_boundary(frame, labels, clusters, grid_size);
+    // Performing DFS, finding clusters.
+
+    vector<int> spanning_cluster_labels = spanning_cluster_label_id(frame, grid_size, labels, clusters);
+    if (spanning_cluster_labels[0] != -1)
+    {
+      //There exists a spanning cluster, search for cluster in upper half-interval.
+      double temp = p;
+      p -= fabs( p_old - temp )/2;
+      p_old = temp;
+    }
+    else
+    {
+      // No spanning cluster found, search for spanning cluster in lower half-interval.
+      double temp = p;
+      p += fabs( p_old - temp )/2;
+      p_old = temp;
+    }
+    rng.seed(seed);
+    random_frame_of_density(p, frame, grid_size);
+    // Generating new random frame (with same seed) in half-interval
+  }
+
+  zd_coordinates arkham; //Dummy variable.
+  arkham.x = grid_size;
+  arkham.y = p;
+  arkham.z = (double) p*p;
+
+  return arkham;
+
+}
+
+void crtexp_nu(int grid_size,vector<zd_coordinates> &comp_data, int r_init, int number_of_census)
+{
+  // Based on methods highlighted in pages 73-74 of Stauffer & Anthony. Finding <p> & <p^2>.
+
+  number_of_census=12;
+
+  int frame[grid_size*grid_size];
+  for (int i = 0; i < r_init ; i++)
+  {
+    int seed = std::random_device{}();
+    rng.seed(seed);
+    random_frame_of_density(0.5, frame, grid_size); // Initialize a random frame of density 0.5 .
+    zd_coordinates temp = binsearch_p_c(0.5, frame, grid_size, number_of_census, seed);
+    comp_data.push_back(temp); //Writing up the values for a single trial in a given grid.
+    // Stores data in the form of {L, p, p^2}
+  }
+
+}
+
+void crtexp_gamma(int grid_size,vector<zd_coordinates> &comp_data, double p, int r_init, int number_of_census)
+{
+  // Using the formal definition of the average cluster size.
+  int lag=0;
+  tau_patch_size_find_np(grid_size, comp_data, p, r_init, number_of_census, lag);
+  // Returns comp_data in the form of (p, s, ns(p)).
+
+  // We need to modify p with L.
+
+  for(int i=0; i < comp_data.size(); i++)
+  {
+    if(comp_data[i].z >= 1)
+    {
+      comp_data[i].x = grid_size; // i.e Not A Header File [{#, p, p}]
+      comp_data[i].z /= (grid_size*grid_size);
+    }
+  }
+
+}
 
 void crtexp_beta_gamma(int grid_size,vector<zd_coordinates> &comp_data, double p, int r_init, int number_of_census)
 {
@@ -2530,6 +2648,12 @@ void crtexp_beta_gamma(int grid_size,vector<zd_coordinates> &comp_data, double p
       //Stores the number of vertices that belong to 2D spanning tree.
       percolation_probabilities[i*number_of_census + j] = k/(grid_size*grid_size);
 
+      if ( i % 5 == 0)
+      {
+        output_dump(frame, grid_size, i, p, labels, clusters, spanning_cluster_labels);
+        // Dumps frame as CSV file
+      }
+
     }
   }
   for (int i=0; i< limit; i++)
@@ -2543,7 +2667,7 @@ void crtexp_beta_gamma(int grid_size,vector<zd_coordinates> &comp_data, double p
   }
 }
 
-void finite_scaling_crtexp(int grid_sizes[], double p, int divisions, int r_init, int number_of_census)
+void finite_scaling_crtexp(int grid_sizes[], double p, string type, int divisions, int r_init, int number_of_census)
 {
   //This method will find finite scaling relations for a given p ----------------> p_c.
 
@@ -2563,7 +2687,16 @@ void finite_scaling_crtexp(int grid_sizes[], double p, int divisions, int r_init
   div << divisions;
   g1 << grid_sizes[0];
   g2 << grid_sizes[divisions-1];
-  outputfinsc.open("CrtExp/FinSc_SP_p_" + peon.str() + "_Div_" + div.str() + "_G1_"+ g1.str() + "_G2_"+ g2.str() + ".csv");
+  if (type == "Nu" || type == "Gam")
+    {
+      outputfinsc.open("CrtExp/FinSc"+ type +"_SP_p_" + peon.str() + "_Div_" + div.str() + "_G1_"+ g1.str() + "_G2_"+ g2.str() + ".csv");
+    }
+  else
+    {
+      //Default is Beta/Gamma Computation.
+      outputfinsc.open("CrtExp/FinSc_SP_p_" + peon.str() + "_Div_" + div.str() + "_G1_"+ g1.str() + "_G2_"+ g2.str() + ".csv");
+    }
+
   // Creating CSV file in "ACF" sub-directory to store output data
 
   for(int i=0; i<divisions; i++)
@@ -2572,15 +2705,33 @@ void finite_scaling_crtexp(int grid_sizes[], double p, int divisions, int r_init
     int seed = std::random_device{}();
     rng.seed(seed);
 
-    if(i==15)
+    if(i%20 == 3)
     {
       increase_stack_limit(256);
     }
 
     std::vector<zd_coordinates> comp_data;
 
-    crtexp_beta_gamma(grid_sizes[i], comp_data, p, r_init, number_of_census);
-    //Finds and returns beta and gamma (critical exponent) related data for a given grid_size
+
+
+    if(type == "Nu")
+    {
+      crtexp_nu(grid_sizes[i], comp_data, r_init, number_of_census);
+      //Finds and returns nu (critical exponent) related data for a given grid_size
+      // Returns {L, p, p^2}
+    }
+    else if(type =="Gam")
+    {
+      crtexp_gamma(grid_sizes[i], comp_data, p, r_init, number_of_census);
+      //Finds and returns gamma (critical exponent) related data for a given grid_size
+      // Returns {L, p, p^2}
+    }
+    else
+    {
+      crtexp_beta_gamma(grid_sizes[i], comp_data, p, r_init, number_of_census);
+      //Finds and returns beta and gamma (critical exponent) related data for a given grid_size
+    }
+
 
     vec_private.insert(vec_private.end(), comp_data.begin(), comp_data.end());
   }
@@ -2588,30 +2739,63 @@ void finite_scaling_crtexp(int grid_sizes[], double p, int divisions, int r_init
   vector <vector<double>> output;
   //Creating 2D vector to store final output
 
-  double trialno =1;
-  for(int i=0; i <vec_private.size(); i++)
+  if(type == "Gam")
   {
-    int j = i % r_init;
-    int trl_no = j % number_of_census + 1; int r_no = int(j/number_of_census);
-    trialno = r_no*number_of_census + trl_no;
-
-    output.push_back({p, vec_private[i].x, trialno, vec_private[i].y, vec_private[i].z});
-    //Filled as p, L, # No, P(p), S(p)
+    double trialno =1;
+    for(int i=0; i <vec_private.size(); i++)
+    {
+      if(vec_private[i].z < 1 && vec_private[i].y < 1)
+      {
+        //Header line represented by row vector [# No, p, p]
+        trialno = vec_private[i].x;
+        continue;
+      }
+      output.push_back({p, vec_private[i].x, trialno, vec_private[i].y, vec_private[i].z});
+      //Filled as p, L, # No, s, n_s(p).
+    }
   }
+  else
+  {
+    double trialno =1;
+    for(int i=0; i <vec_private.size(); i++)
+    {
+      int j = i % r_init;
+      int trl_no = j % number_of_census + 1; int r_no = int(j/number_of_census);
+      trialno = r_no*number_of_census + trl_no;
+
+      output.push_back({p, vec_private[i].x, trialno, vec_private[i].y, vec_private[i].z});
+      //Filled as p, L, # No, P(p), S(p)
+    }
+  }
+
 
   //Printing out obtained results.
   cout << "The vector elements are: "<< endl;
-  cout << " p , L, # Tr No , P[p] ,  S[p]\n";
+  //cout << " p , L, # Tr No , P[p] ,  S[p]\n";
+  if(type == "Nu")
+  {
+    cout << " p , L, # Tr No , p ,  p^2 \n";
+    outputfinsc << " p , L, # Tr No , p ,  p^2 \n";
+  }
+  else if(type == "Gam")
+  {
+    cout << " p , L, # Tr No , s ,  s*n_s(p) \n";
+    outputfinsc << " p , L, # Tr No , s ,  s*n_s(p) \n";
+  }
+  else
+  {
+    cout << " p , L, # Tr No , s ,  ns_(p)\n";
+    outputfinsc << " p , L, # Tr No , P[p] ,  S[p]\n";
+  }
   for (int i = 0; i < output.size(); i++)
   {
-    cout << setprecision(8) << output[i][0] << "  " << setprecision(5) << output[i][1] << "  " << setprecision(3) << output[i][2] << "  " << setprecision(8) << output[i][3] << "  " << setprecision(8) << output[i][4] << endl;
+    cout << setprecision(8) << output[i][0] << "  " << setprecision(5) << output[i][1] << "  " << setprecision(3) << output[i][2] << "  " << setprecision(16) << output[i][3] << "  " << setprecision(16) << output[i][4] << endl;
   }
   // Saving to aforementioned CSV
 
-  outputfinsc << " p , L, # Tr No , P[p] ,  S[p]\n";
   for (int i = 0; i < output.size(); i++)
   {
-    outputfinsc << setprecision(8) << output[i][0] << "," << setprecision(5) << output[i][1] << "," << setprecision(3) << output[i][2] << "," << setprecision(8) << output[i][3] << "," << setprecision(8) << output[i][4]  << endl;
+    outputfinsc << setprecision(8) << output[i][0] << "," << setprecision(8) << output[i][1] << "," << setprecision(3) << output[i][2] << "," << setprecision(16) << output[i][3] << "," << setprecision(16) << output[i][4]  << endl;
   }
   outputfinsc.close();
 

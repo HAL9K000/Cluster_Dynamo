@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include <stdlib.h>
 #include <unistd.h>
 #include <cstdlib>
@@ -59,6 +60,8 @@ int disjoint_vectors(vector<int> vec_1, vector<int> vec_2);
 vector<int> common_elements(vector<int> vec_1, vector<int> vec_2);
 template<typename T>std::vector<double> linspace(T start_in, T end_in, int num_in);
 void print_vector(std::vector<double> vec);
+
+void output_dump(int frame[], int grid_size, int i, double p, int labels[], vector <cluster>& clusters, vector<int>& spanning_cluster_labels);
 
 // -------------------------------Percolation Models-------------------------------------------//
 
@@ -133,8 +136,10 @@ void acf_np_custom(int grid_size, float p, int divisions, int length, int lag);
 
 // --------------------------------- Crtical Exponents (Beta, Gamma etc) [Finite Scaling]------------------------//
 
-
+zd_coordinates binsearch_p_c(double p, int frame[], int grid_size, int num, int seed);
+void crtexp_nu(int grid_size,vector<zd_coordinates> &comp_data, int r_init, int number_of_census);
+void crtexp_gamma(int grid_size,vector<zd_coordinates> &comp_data, double p, int r_init, int number_of_census);
 void crtexp_beta_gamma(int grid_size,vector<zd_coordinates> &comp_data, double p, int r_init, int number_of_census);
-void finite_scaling_crtexp(int grid_sizes[], double p, int divisions, int r_init, int number_of_census);
+void finite_scaling_crtexp(int grid_sizes[], double p, string type, int divisions, int r_init, int number_of_census);
 
 #endif

@@ -27,7 +27,7 @@ def pow_law(x, a, expo):
 
 def plotter():
     
-    s = input("Enter Critical Exponent You Would Like To Plot (Choice of Beta, Gamma, Sigma, Tau or Fin Sc (Note Spelling):\t")
+    s = input("Enter Critical Exponent You Would Like To Plot (Choice of Beta, Gamma, Sigma, Tau, Nuu (Nu) or Fin Sc (Note Spelling):\t")
     
     if ( s== "Gamma" or s == "gamma"):
         crtexpt_gamma()
@@ -37,6 +37,8 @@ def plotter():
         crtexpt_beta()
     elif ( s=="Sigma" or s== "sigma"):
         crtexpt_sigma()
+    elif (s=="Nuu" or s== "nuu" or s== "nu" or s== "Nu"):
+        crtexpt_nuu()
     elif (s=="Fin Sc" or s== "fin sc"):
         crtexpt_finsc()
     else:
@@ -48,32 +50,37 @@ def crtexpt_gamma():
     os.chdir("..\simulations\CrtExp")
     # Changing to relevant directory.
     
-    s = input("The default file to be analysed is file: 'Gamma_NP_L_256_p1_0.578_p2_0.608_R_5_Cen_25.csv'. To modify some other Gamma file, type 'Y':\t")
+    #s = input("The default file to be analysed is file: 'Gamma_NP_L_256_p1_0.578_p2_0.608_R_5_Cen_25.csv'. To modify some other Gamma file, type 'Y':\t")
     
-    GrS =256; p1 = 0.578; p2 = 0.608; R= 5; Cen = 25;
+    s = input("The default file to be analysed is file: 'FinScGam_SP_p_0.5927_Div_241_G1_25_G2_401.csv'. To modify some other Gamma file, type 'Y':\t")
+    
+    p =0.5927; g1 = 25; g2 = 401; R= 5; Div = 241;
     
     if (s == "Y" or s == "y"):
-        GrS= int(input("Enter Grid Size:\t"))
-        p1= float(input("Enter p1 (starting value of p):\t"))
-        p2= float(input("Enter p2 (ending value of p):\t"))
+        p= float(input("Enter Grid Size:\t"))
+        g1= int(input("Enter p1 (starting value of p):\t"))
+        g2= int(input("Enter p2 (ending value of p):\t"))
         R= int(input("Enter number of random trials:\t"))
-        Cen= int(input("Enter number of censuses:\t"))
+        Div= int(input("Enter number of divisions:\t"))
         
-    data= np.genfromtxt('Gamma_SP_L_%d_p1_%4.3f_p2_%4.3f_R_%d_Cen_%d.csv' %(GrS, p1, p2, R, Cen), delimiter=",", comments='#', skip_header=1)
+    data= np.genfromtxt('FinScGam_SP_p_%5.4f_Div_%d_G1_%d_G2_%d.csv' %(p, Div, g1, g2), delimiter=",", comments='#', skip_header=1)
                         
     os.chdir(r"..\..\figures")
     
     if(os.path.isdir("CrtExp")==False):
         os.mkdir("CrtExp")
     os.chdir("CrtExp")
+    if(os.path.isdir("Finite Scaling")==False):
+        os.mkdir("Finite Scaling")
+    os.chdir("Finite Scaling")
     if(os.path.isdir("Gamma")==False):
         os.mkdir("Gamma")
     os.chdir("Gamma")
 
     # p values are such that p ----> p_c
-    p_c =0.592746; rtot = Cen*R;
+    p_c =0.592746; rtot = Div*R;
     
-    data[:,1] -= p_c        #From p, creating p -p_c.
+    '''data[:,1] -= p_c        #From p, creating p -p_c.
     
     split_data = data[:,1] > 0
     
@@ -82,9 +89,75 @@ def crtexpt_gamma():
     
     datalow[:,1] =np.abs(datalow[:,1]) # Generating |p - p_c|
     
-    #data[:,1] = np.abs(data[:,1]) # Generating |p - p_c|
+    #data[:,1] = np.abs(data[:,1]) # Generating |p - p_c|'''
     
-    zerodark30= pan.DataFrame(datahigh, columns= ["Trial Number", "$p - p_{c}$", r"$\langle S(p) \rangle$"])
+    g=g1; trl_no=1;a=0; b=0; nu_data=[]
+    
+    for x in range(0, data[:,1].size):
+        
+        if(g != data[x,1]):
+            b=x;
+            denom = float(np.sum(data[a:b,4])); denom2= data[x,0];
+            s_nsp= np.multiply(data[a:b,3], data[a:b,4])
+            denom= float(np.sum(s_nsp)) #Calculating S[p] for a given trial number as per defn.
+            s2_nsp = np.multiply(data[a:b,3], s_nsp)
+            numer = float(np.sum(s2_nsp))
+            nu_data.append([g, trl_no, (numer/denom), (numer/denom2)])
+            
+            g = data[x,1]
+            trl_no=1; a=x;
+            
+        elif(trl_no != data[x,2]):
+            b=x;
+            denom = float(np.sum(data[a:b,4])); denom2= data[x,0];
+            s_nsp= np.multiply(data[a:b,3], data[a:b,4])
+            denom= float(np.sum(s_nsp)) #Calculating S[p] for a given trial number as per defn.
+            s2_nsp = np.multiply(data[a:b,3], s_nsp)
+            numer = float(np.sum(s2_nsp))
+            nu_data.append([g, trl_no, (numer/denom), (numer/denom2)])
+            
+            trl_no= data[x,2]; a=x;
+            
+        elif(x == data[:,1].size -1):
+            #last entry in series
+            b=x+1
+            denom = float(np.sum(data[a:b,4])); denom2= data[x,0];
+            s_nsp= np.multiply(data[a:b,3], data[a:b,4])
+            denom= float(np.sum(s_nsp)) #Calculating S[p] for a given trial number as per defn.
+            s2_nsp = np.multiply(data[a:b,3], s_nsp)
+            numer = float(np.sum(s2_nsp))
+            nu_data.append([g, trl_no, (numer/denom), (numer/denom2)])
+            break
+        
+    print(" L ,  # ,  <S[p]\t")
+    for x in nu_data:
+        print(x)
+    
+    new_data= np.array(nu_data)
+    
+    zerodark30= pan.DataFrame(new_data, columns= ["L", "$Trial Number$", r"$\langle S[p] \rangle$", r"$\langle S'[p] \rangle$"])
+    
+    x1= np.transpose(new_data[:,0])
+    x2= np.transpose(new_data[:,2])
+    
+    g= sea.lineplot(data=zerodark30, x="L" , y=r"$\langle S[p] \rangle$", estimator='mean', ci='sd')
+    popt, pcov = curve_fit(pow_law, x1, x2, p0= np.asarray([7.5, 0.15]))
+    
+    perr = np.sqrt(np.diag(pcov))
+        
+    print("SD of p_avg - p_c:\t" +str(perr[1]))
+    
+    tukan= (popt[0], popt[1], perr[1])
+    plt.plot(x1, pow_law(x1, *popt), 'm--', label=r'Th Fit: $ \langle S[p] \rangle = %5.4f \times L^{(%5.4f \mp %5.4f)} $ ' % tukan )
+    plt.xlim(g1- 10, g2 + 10)
+    plt.legend()
+    g.set_title(r'$p = %f \quad ( \xi \longrightarrow \infty ) $' %(data[0,0]))
+    plt.savefig("S(p) vs L (p--%8.7f).png" %(data[0,0]), dpi=400)
+    plt.show()
+    plt.close()
+    
+    
+    '''zerodark30= pan.DataFrame(datahigh, columns= ["Trial Number", "$p - p_{c}$", r"$\langle S(p) \rangle$"])
     
     g=sea.scatterplot(data=zerodark30, x="$p - p_{c}$" , y=r"$\langle S(p) \rangle$", hue="Trial Number", hue_order= ["1","25","50", "75", "100", "125"], palette= "viridis")
     g.set_title('$p > p_{c}$')
@@ -125,7 +198,7 @@ def crtexpt_gamma():
     
     lnPframe[:,0]= datahigh[:,0]; lnPframe[:,1]= ln_p_pc ; lnPframe[:,2]= ln_Sp; 
     
-    hurtlocker= pan.DataFrame(lnPframe, columns= ["Trial Number", "$ln(p - p_{c})$", r"$\langle ln(S(p)) \rangle$"])
+    hurtlocker= pan.DataFrame(lnPframe, columns= ["Trial Number", "$ln(p - p_{c})$", r"$\langle ln(S(p)) \rangle$"])'''
     #Creating Pandas Dataframe.
     
     '''g=sea.scatterplot(data=hurtlocker, x="$ln|p - p_{c}|$" , y=r"$\langle ln(S(p)) \rangle$", hue="Trial Number", hue_order= ["1","25","50", "75", "100", "125"], palette= "viridis")
@@ -133,7 +206,7 @@ def crtexpt_gamma():
     plt.savefig("Scatter Hue Ln (G--%d  N--%d).png" %(GrS, rtot), dpi=400)
     plt.close()'''
     
-    g= sea.lineplot(data=hurtlocker, x="$ln(p - p_{c})$" , y=r"$\langle ln(S(p)) \rangle$", estimator='mean', ci='sd')
+    '''g= sea.lineplot(data=hurtlocker, x="$ln(p - p_{c})$" , y=r"$\langle ln(S(p)) \rangle$", estimator='mean', ci='sd')
     g.set_title(r"$p > p_{c}$")
     plt.savefig("Line Hue Ln High (G--%d  N--%d).png" %(GrS, rtot), dpi=400)
     plt.show()
@@ -153,7 +226,7 @@ def crtexpt_gamma():
     g.set_title(r"$p < p_{c}$")
     plt.savefig("Line Hue Ln Low (G--%d  N--%d).png" %(GrS, rtot), dpi=400)
     plt.show()
-    plt.close()
+    plt.close()'''
     
     
     
@@ -719,6 +792,112 @@ def crtexpt_finsc():
     plt.show()
     plt.close()
     
+    
+def crtexpt_nuu():
+    # Makes plots based on finite scaling (nuu).
+    
+    os.chdir("..\simulations\CrtExp")
+    # Changing to relevant directory.
+    
+    p_c=0.592746
+    
+    s = input("The default file to be analysed is file: 'FinScNu_SP_p_0.5947_Div_123_G1_25_G2_207.csv'. To modify some other Finite Scaling file, type 'Y' or 'y':\t")
+    
+    p =0.5947; g1 = 25; g2 = 207; R= 100; Div = 123;
+    
+    if (s == "Y" or s == "y"):
+        g1= float(input("Enter Starting Grid Size:\t"))
+        g2= float(input("Enter Ending Grid Size:\t"))
+        p= float(input("Enter p (value at which data was collected):\t"))
+        R= int(input("Enter number of random trials:\t"))
+        Div= int(input("Enter number of divisions:\t"))
+    
+    data= np.genfromtxt('FinScNu_SP_p_%5.4f_Div_%d_G1_%d_G2_%d.csv' %(p, Div, g1, g2), delimiter=",", comments='#', skip_header=1)
+                        
+    r=0; GrS_List=[]
+    for i in data[:,1]:
+        if (r != i):
+            r=i
+            GrS_List.append(r)
+    #Collecting list of all grid sizes available.
+    
+    gingerbread =[] #Stores data in final format
+    
+    g = GrS_List[0] ; flag =0; a =0; b=0;
+    for x in range(0, data[:,1].size):
+        
+        if (data[x,1] != g and flag == 1 or x == data[:,1].size -1):
+            #p slice just ended.
+            b = x
+            print("For size %f, we have b = %d  and  b - a = %d" %(data[x,1], b, (b-a)))
+            mean_p= np.mean(data[a:b,3])
+            mean_p2= np.mean(data[a:b,4])
+            sd_p = np.std(data[a:b,3])
+            gingerbread.append([g, mean_p, mean_p2, sd_p])
+            
+            g= data[x,1]
+            flag =0
+        
+        if (data[x,1] == g and flag == 0):
+            a = x
+            flag=1
+    
+    npframe = np.array(gingerbread)
+    print(npframe.shape)
+    npframe[:,1] -= p_c
+    npframe[:,1] = np.fabs(npframe[:,1])
+    
+    hurtlocker= pan.DataFrame(npframe, columns= [ "L",  r"$ | \langle p \rangle - p_c | $", r"$ \langle p^{2} \rangle $", r"$ \sigma_{p} $"])
+    
+    
+    x1 =np.transpose(npframe[:,0])
+    x2= np.transpose(npframe[:,3])
+    
+    os.chdir(r"..\..\figures")
+    
+    if(os.path.isdir("CrtExp")==False):
+        os.mkdir("CrtExp")
+    os.chdir("CrtExp")
+    if(os.path.isdir("Finite Scaling")==False):
+        os.mkdir("Finite Scaling")
+    os.chdir("Finite Scaling")
+    if(os.path.isdir("Nuu")==False):
+        os.mkdir("Nuu")
+    os.chdir("Nuu")
+    
+    g= sea.scatterplot(data=hurtlocker, x="L" , y= r"$ \sigma_{p} $")
+    popt, pcov = curve_fit(pow_law, x1, x2, p0= np.asarray([0.1, -0.75]))
+    
+    perr = np.sqrt(np.diag(pcov))
+        
+    print("SD of Sigma_p:\t" +str(perr[1]))
+    
+    tukan= (popt[0], -popt[1], perr[1])
+    plt.plot(x1, pow_law(x1, *popt), 'm--', label=r'Th Fit: $ \sigma_{p} = %5.4f \times L^{-(%5.4f \mp %5.4f)} $ ' % tukan )
+    plt.xlim(GrS_List[0]- 10, GrS_List[-1] + 10)
+    plt.legend()
+    g.set_title(r'$ \sigma_{p} \quad vs \quad L$')
+    plt.savefig("Nu Sigma_p vs L (G1--%3.0f G2-- %3.0f).png" %(GrS_List[0], GrS_List[-1]), dpi=400)
+    plt.show()
+    plt.close()
+    
+    x2= np.transpose(npframe[:,1])
+    
+    g= sea.scatterplot(data=hurtlocker, x="L" , y= r"$ | \langle p \rangle - p_c | $")
+    popt, pcov = curve_fit(pow_law, x1, x2, p0= np.asarray([0.05, -0.75]))
+    
+    perr = np.sqrt(np.diag(pcov))
+        
+    print("SD of p_avg - p_c:\t" +str(perr[1]))
+    
+    tukan= (popt[0], -popt[1], perr[1])
+    plt.plot(x1, pow_law(x1, *popt), 'm--', label=r'Th Fit: $ | \langle p \rangle - p_c | = %5.4f \times L^{-(%5.4f \mp %5.4f)} $ ' % tukan )
+    plt.xlim(GrS_List[0]- 10, GrS_List[-1] + 10)
+    plt.legend()
+    g.set_title(r'$ | \langle p \rangle - p_c | \quad vs \quad L $')
+    plt.savefig("Nu p_avg - p_c vs L (G1--%3.0f G2-- %3.0f).png" %(GrS_List[0], GrS_List[-1]), dpi=400)
+    plt.show()
+    plt.close()
     
 
     
