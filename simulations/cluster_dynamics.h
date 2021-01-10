@@ -53,6 +53,7 @@ float standard_deviation_of_array(float array[],int size);
 float mean_of_vector(vector<float> array,int size);
 void random_frame(int frame[], int grid_size);
 void random_frame_of_density(float density, int frame[], int grid_size);
+void solitary_droplet(int frame[], int grid_size);
 void zeros(int frame[], int grid_size);
 float calculate_density(int frame[], int grid_size);
 void increase_stack_limit(int stack_size);

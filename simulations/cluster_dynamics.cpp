@@ -74,6 +74,34 @@ void random_frame_of_density(float density, int frame[], int grid_size) {
     }
 }
 
+void solitary_droplet(int frame[], int grid_size)
+{
+  //A solitary droplet, lonesome tear crystallised in a lattice, spreading regret and loss.
+
+  for (int i = 0; i < grid_size; ++i)
+  {
+        for (int j = 0; j < grid_size; ++j)
+        {
+            frame[i*grid_size + j] = 0;
+        }
+  }
+  int numero_uno; //Stores index location of central position in frame
+
+  if(grid_size%2 == 0)
+  {
+    //Grid size is even.
+    numero_uno = (grid_size + 1)*grid_size/2;
+  }
+  else
+  {
+    //We can find an exact centre.
+    numero_uno = (grid_size + 1)*(grid_size-1)/2;
+  }
+  frame[numero_uno] = 1;
+
+}
+
+
 void zeros(int frame[], int grid_size) {
 
 	for (int i = 0; i < grid_size; ++i) {
@@ -3196,6 +3224,20 @@ void finite_scaling_crtexp(int grid_sizes[], double p, string type, int division
     outputfinsc << setprecision(8) << output[i][0] << "," << setprecision(8) << output[i][1] << "," << setprecision(3) << output[i][2] << "," << setprecision(16) << output[i][3] << "," << setprecision(16) << output[i][4]  << endl;
   }
   outputfinsc.close();
+
+
+}
+
+
+//-------------------------------- Critical Exponent Calculation [DP Model]----------------------------
+
+
+void crtexp_dynamo_dp(int grid_size, double p_start, double p_end, int divisions, int r_init, int length_of_census)
+{
+  /* THE POINT OF THIS FUNCTION IS TO FIRSTLY ASCERTAIN P_C, FOLLOWED BY DYNAMIC ASCERTATION OF
+     CERTAIN CRITICAL EXPONENTS (SECTION 3.4.3 (PG-- 867), Hirinschen 2000)*/
+
+  
 
 
 }
