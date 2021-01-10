@@ -149,10 +149,15 @@ def crtexpt_gamma():
     
     tukan= (popt[0], popt[1], perr[1])
     plt.plot(x1, pow_law(x1, *popt), 'm--', label=r'Th Fit: $ \langle S[p] \rangle = %5.4f \times L^{(%5.4f \mp %5.4f)} $ ' % tukan )
-    plt.xlim(g1- 10, g2 + 10)
+    plt.xlim(math.exp(3), g2 + 10)
+    #plt.ylim(math.exp(0), math.exp(9))
+    plt.yscale('log', basey= math.e)
+    plt.xscale('log', basex= math.e)
+    g.xaxis.set_major_formatter(mtick.FuncFormatter(ticks))
+    g.yaxis.set_major_formatter(mtick.FuncFormatter(ticks))
     plt.legend()
     g.set_title(r'$p = %f \quad ( \xi \longrightarrow \infty ) $' %(data[0,0]))
-    plt.savefig("S(p) vs L (p--%8.7f).png" %(data[0,0]), dpi=400)
+    plt.savefig("Exp Fig V S(p) vs L (p--%8.7f).png" %(data[0,0]), dpi=400)
     plt.show()
     plt.close()
     
@@ -713,9 +718,9 @@ def crtexpt_finsc():
     os.chdir("..\simulations\CrtExp")
     # Changing to relevant directory.
     
-    s = input("The default file to be analysed is file: 'FinSc_SP_p_0.5927_Div_81_G1_25_G2_401.csv'. To modify some other Finite Scaling file, type 'Y' or 'y':\t")
+    s = input("The default file to be analysed is file: 'FinSc_SP_p_0.5927_Div_162_G1_25_G2_401.csv'. To modify some other Finite Scaling file, type 'Y' or 'y':\t")
     
-    p =0.5927; g1 = 25; g2 = 401; R= 50; Div = 81;
+    p =0.5927; g1 = 25; g2 = 401; R= 50; Div = 162;
     
     if (s == "Y" or s == "y"):
         g1= float(input("Enter Starting Grid Size:\t"))
@@ -768,9 +773,13 @@ def crtexpt_finsc():
     plt.legend()
     
     plt.xlim(g1,g2)
-    plt.ylim(0,1)
+    plt.ylim(math.exp(-5), math.exp(0))
+    plt.yscale('log', basey= math.e)
+    plt.xscale('log', basex= math.e)
+    g.xaxis.set_major_formatter(mtick.FuncFormatter(ticks))
+    g.yaxis.set_major_formatter(mtick.FuncFormatter(ticks))
     g.set_title(r'$p = %8.7f, ( \xi \longrightarrow \infty ) $' %(p))
-    plt.savefig("2D Beta P(p) vs L (p--%8.7f).png" %(p), dpi=400)
+    plt.savefig("Fig III Beta P(p) vs L (p--%8.7f) Exp.png" %(p), dpi=400)
     plt.show()
     plt.close()
     
@@ -787,8 +796,12 @@ def crtexpt_finsc():
     plt.plot(x1, pow_law(x1, *popt), 'm--', label=r'Th Fit: $ S[p] = %5.4f \times L^{(%5.4f \pm %5.4f)} $ ' % tukan )
     plt.legend()
     plt.xlim(g1,g2)
+    plt.yscale('log', basey= math.e)
+    plt.xscale('log', basex= math.e)
+    g.xaxis.set_major_formatter(mtick.FuncFormatter(ticks))
+    g.yaxis.set_major_formatter(mtick.FuncFormatter(ticks))
     g.set_title(r'$p = %8.7f, ( \xi \longrightarrow \infty ) $' %(p))
-    plt.savefig("2D Gamma S(p) vs L (p--%8.7f).png" %(p), dpi=400)
+    plt.savefig(" Gamma S(p) vs L (p--%8.7f) Exp.png" %(p), dpi=400)
     plt.show()
     plt.close()
     
@@ -874,10 +887,16 @@ def crtexpt_nuu():
     
     tukan= (popt[0], -popt[1], perr[1])
     plt.plot(x1, pow_law(x1, *popt), 'm--', label=r'Th Fit: $ \sigma_{p} = %5.4f \times L^{-(%5.4f \mp %5.4f)} $ ' % tukan )
-    plt.xlim(GrS_List[0]- 10, GrS_List[-1] + 10)
+    plt.xlim(GrS_List[0]- 2, GrS_List[-1] + 10)
+    plt.xlim(math.exp(3), math.exp(5.5))
+    plt.ylim(math.exp(-5.25), math.exp(-3))
+    plt.yscale('log', basey= math.e)
+    plt.xscale('log', basex= math.e)
+    g.xaxis.set_major_formatter(mtick.FuncFormatter(ticks))
+    g.yaxis.set_major_formatter(mtick.FuncFormatter(ticks))
     plt.legend()
     g.set_title(r'$ \sigma_{p} \quad vs \quad L$')
-    plt.savefig("Nu Sigma_p vs L (G1--%3.0f G2-- %3.0f).png" %(GrS_List[0], GrS_List[-1]), dpi=400)
+    plt.savefig("Nu Sigma_p vs L (G1--%3.0f G2-- %3.0f) Exp.png" %(GrS_List[0], GrS_List[-1]), dpi=400)
     plt.show()
     plt.close()
     
@@ -892,10 +911,15 @@ def crtexpt_nuu():
     
     tukan= (popt[0], -popt[1], perr[1])
     plt.plot(x1, pow_law(x1, *popt), 'm--', label=r'Th Fit: $ | \langle p \rangle - p_c | = %5.4f \times L^{-(%5.4f \mp %5.4f)} $ ' % tukan )
-    plt.xlim(GrS_List[0]- 10, GrS_List[-1] + 10)
+    plt.xlim(GrS_List[0]- 2, GrS_List[-1] + 10)
+    plt.xlim(math.exp(3), math.exp(5.5))
+    plt.yscale('log', basey= math.e)
+    plt.xscale('log', basex= math.e)
+    g.xaxis.set_major_formatter(mtick.FuncFormatter(ticks))
+    g.yaxis.set_major_formatter(mtick.FuncFormatter(ticks))
     plt.legend()
     g.set_title(r'$ | \langle p \rangle - p_c | \quad vs \quad L $')
-    plt.savefig("Nu p_avg - p_c vs L (G1--%3.0f G2-- %3.0f).png" %(GrS_List[0], GrS_List[-1]), dpi=400)
+    plt.savefig("Nu p_avg - p_c vs L (G1--%3.0f G2-- %3.0f) Exp.png" %(GrS_List[0], GrS_List[-1]), dpi=400)
     plt.show()
     plt.close()
     

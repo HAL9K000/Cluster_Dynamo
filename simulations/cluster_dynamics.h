@@ -74,7 +74,7 @@ void tp_update(int frame[], int grid_size, float birth_probability, float feedba
 void simulate_np(int frame[], int grid_size, float birth_probability, int updates_per_site);
 void simulate_dp(int frame[], int grid_size, float birth_probability, int updates_per_site);
 void simulate_tp(int frame[], int grid_size, float birth_probability, float feedback_strength, int updates_per_site);
-float equilibrium_density_dp(int grid_size, float birth_probability, int number_of_census, int lag, int updates_per_site=100000, int collect_frames=0);
+float equilibrium_density_dp(int grid_size, float birth_probability, int r_init=1, int number_of_census=5, int lag=2000, int updates_per_site=100000, int collect_frames=0);
 float equilibrium_density_tp(int grid_size, float birth_probability, float feedback_strength, int number_of_census, int lag, int updates_per_site=100000, int collect_frames=0);
 
 // -----------------------------------Cluster Statics -----------------------------------------//
@@ -127,6 +127,11 @@ int size_spanning_horizontal(int frame[], int grid_size);
 int size_spanning_2D(int frame[], int grid_size);
 float theoretical_percolation_probability_np(int grid_size, float birth_probability, int r_init, int number_of_census, int lag);
 void theoretical_percolation_probabilities_np(int grid_size, float p_start, float p_end, int divisions, int r_init, int number_of_census, int lag);
+float theoretical_percolation_probability_dp(int grid_size, float birth_probability, int r_init, int number_of_census, int lag);
+void theoretical_percolation_probabilities_dp(int grid_size, float p_start, float p_end, int divisions, int r_init, int number_of_census, int lag);
+double theoret_percol_prob_denovo_dp(int grid_size, float birth_probability, int r_init, int number_of_census, int lag);
+void calculate_pc_dp(int grid_size, float p_start, float p_end, int divisions, int r_init, int number_of_census, int lag);
+void pavg_map_pc_dp(int grid_size,float p_start, float p_end, int divisions, int r_init, int number_of_census, int lag);
 
 // ---------------------------------- ACF NP ---------------------------------------------------------------------//
 

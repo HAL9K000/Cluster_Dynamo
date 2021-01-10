@@ -16,11 +16,12 @@ def plotter():
     
     os.chdir("../")
     # Changing to root directory
-    census =25
-    lag=15
-    p_start=0.48
-    p_end=0.83
-    L= [50, 100]
+    census =12
+    r_init =12
+    lag=12
+    p_start=0.65
+    p_end=0.78
+    L= [25]
     
     masterbinder={}
     #Empty dictionary to be used as Pandas frame.
@@ -29,7 +30,7 @@ def plotter():
     
     for g in L:
         #Iterating over grid sizes.
-        data=np.genfromtxt('simulations/Theoretical_Percol/NP_L_%d_p1_%3.2f_p2_%3.2f_Cen_%d_Lag_%d.csv' %(g, p_start, p_end, census, lag), delimiter=",", comments='#', skip_header=1)
+        data=np.genfromtxt('simulations/Theoretical_Percol/DP_L_%d_p1_%3.2f_p2_%3.2f_Cen_%d_R_%d_Lag_%d.csv' %(g, p_start, p_end, census, r_init, lag), delimiter=",", comments='#', skip_header=1)
         
         for x in range(0, len(data[:,0])):
             #Iterating over all values in a column.
@@ -46,11 +47,12 @@ def plotter():
     
     g= sea.lineplot(x="p (Birth Prob)", y="P (Theoretical Perc Value)",hue="L (Grid Length)", estimator=None, ci=None ,data=heartbreaker)
     plt.ylim(0,1)
-    plt.xlim(0.4, 1.00)
-    plt.axvline(0.592746, 0, 1, color='0.65', ls='--') #Theoretical Percolation Point For Infinite 2D Grid.
+    plt.xlim(0.5, 0.9)
+    plt.axvline(0.70548, 0, 1, color='0.65', ls='--') #Theoretical Percolation Point For Infinite 2D Grid.
+    plt.axvline(0.728, 0, 1, color='0.9', ls='--') #Ayan's Estimated Percolation Point
     
-    census1 = 25    
-    plt.savefig("Theoretical Percolation Results Mult Ran Trials (Census %d).png" %(census1), dpi=300)
+    census1 = 12    
+    plt.savefig("DP Theoretical Percolation Results Mult Ran Trials (Census %d).png" %(census1), dpi=300)
     print("Padua")
     
     os.chdir("../analysis")
