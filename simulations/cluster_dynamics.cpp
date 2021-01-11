@@ -3232,12 +3232,74 @@ void finite_scaling_crtexp(int grid_sizes[], double p, string type, int division
 //-------------------------------- Critical Exponent Calculation [DP Model]----------------------------
 
 
-void crtexp_dynamo_dp(int grid_size, double p_start, double p_end, int divisions, int r_init, int length_of_census)
+void crtexp_dynamo_dp(int grid_size, double p_start, double p_end, int divisions, int r_init, int length)
 {
   /* THE POINT OF THIS FUNCTION IS TO FIRSTLY ASCERTAIN P_C, FOLLOWED BY DYNAMIC ASCERTATION OF
      CERTAIN CRITICAL EXPONENTS (SECTION 3.4.3 (PG-- 867), Hirinschen 2000)*/
 
-  
+  vector<double> p_space = linspace(p_start, p_end, divisions);
+  // The pspace to iterate over.
+
+  std::vector<zd_coordinates> vec;
+  // Stores collated output from parallel method calls in proper ascending order of p values.
+  ofstream output_dp;
+  // Creating a file instance called output to store output data as CSV.
+
+  stringstream g, div ,p1, p2, rini;
+
+  g << grid_size;
+  //p_en << setprecision(3) << p_end;
+  // setprecision() is a stream manipulator that sets the decimal precision of a variable.
+  div << divisions;
+  p1 << p_start;
+  p2 << p_end;
+  rini << r_init;
+
+  output_dp.open("CrtExp/P_c_DP_G_" + g.str() + "_Div_" + div.str() + "_p1_"+ g1.str() + "_p2_"+ g2.str() + "_R_"+ rini.str() + ".csv");
+  // Creating CSV file.
+
+  #pragma omp parallel
+  {
+      std::vector<zd_coordinates> vec_private;
+
+      //Grants a static schedule with a chunk size of 1.
+      /* Based on procedure suggested in:
+      https://stackoverflow.com/questions/18669296/c-openmp-parallel-for-loop-alternatives-to-stdvector */
+
+      #pragma omp for nowait schedule(static)
+      for (int i=0; i < p_space.size(); i++)
+      {
+        //type="Gam";
+        stringstream message;     //To make cout thread-safe as well as non-garbled due to race conditions.
+        message << "We are working on P Value:\t" << p_space[i] <<endl;
+        cout << message.str();
+        int seed = std::random_device{}();
+        rng.seed(seed);
+
+        std::vector<zd_coordinates> comp_data;
+
+        crtexp_DP_Basic(grid_size, comp_data, p_space[i], r_init, length);
+
+        vec_private.insert(vec_private.end(), comp_data.begin(), comp_data.end());
+
+      }
+
+      #pragma omp for schedule(static) ordered
+      for(int i=0; i< omp_get_num_threads(); i++)
+      {
+        #pragma omp ordered
+          vec.insert(vec.end(), vec_private.begin(), vec_private.end());
+          // Inserting critical exponent data for each grid size in order.
+          stringstream message3;
+          message3 << "Is this happening?\n";
+          cout << message3.str();
+
+      }
+  }
+
+
+
+
 
 
 }
