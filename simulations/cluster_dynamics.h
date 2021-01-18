@@ -1,6 +1,8 @@
 #include <iostream>
 #include <string>
 #include <stdlib.h>
+#include <stdio.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <cstdlib>
 #include <random>
@@ -56,6 +58,7 @@ void random_frame_of_density(float density, int frame[], int grid_size);
 void solitary_droplet(int frame[], int grid_size);
 void zeros(int frame[], int grid_size);
 float calculate_density(int frame[], int grid_size);
+int number_of_elem_of_array(int frame[],int grid_size);
 void increase_stack_limit(int stack_size);
 int disjoint_vectors(vector<int> vec_1, vector<int> vec_2);
 vector<int> common_elements(vector<int> vec_1, vector<int> vec_2);
@@ -147,5 +150,11 @@ void crtexp_nu(int grid_size,vector<zd_coordinates> &comp_data, int r_init, int 
 void crtexp_gamma(int grid_size,vector<zd_coordinates> &comp_data, double p, int r_init, int number_of_census);
 void crtexp_beta_gamma(int grid_size,vector<zd_coordinates> &comp_data, double p, int r_init, int number_of_census);
 void finite_scaling_crtexp(int grid_sizes[], double p, string type, int divisions, int r_init, int number_of_census);
+
+
+//-------------------------------- Critical Exponent Calculation [DP Model]---------------------------------------//
+
+void crtexp_DP_Basic(int grid_size,vector<zd_coordinates> &comp_data, double p, int r_init, int length);
+void crtexp_dynamo_dp(int grid_size, double p_start, double p_end, int divisions, int r_init, int length);
 
 #endif

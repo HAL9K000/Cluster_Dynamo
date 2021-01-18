@@ -24,6 +24,7 @@ float mean_of_array(float array[],int size){
 	return sum/(float)size;
 }
 
+
 float standard_deviation_of_array(float array[],int size){
 
 	float mean = mean_of_array(array,size);
@@ -123,6 +124,17 @@ float calculate_density(int frame[], int grid_size){
 
     float density = occupancy/(grid_size*grid_size);
 	return density;
+}
+
+int number_of_elem_of_array(int frame[],int grid_size)
+{
+  float sum = 0.0;
+
+	for (int i =0; i<grid_size*grid_size; ++i)
+  {
+		sum += frame[i];
+	}
+  return sum;
 }
 
 void increase_stack_limit(int stack_size){
@@ -3232,6 +3244,64 @@ void finite_scaling_crtexp(int grid_sizes[], double p, string type, int division
 //-------------------------------- Critical Exponent Calculation [DP Model]----------------------------
 
 
+void crtexp_DP_Basic(int grid_size,vector<zd_coordinates> &comp_data, double p, int r_init, int length)
+{
+
+  /* We are following the Dynamic Monte Carlo alogrithms highlighted in
+     SECTION 3.4.3 (PG-- 867), Hirinschen 2000*/
+
+  int frame[grid_size*grid_size];
+  for (int i = 0; i < r_init ; i++)
+  {
+    int seed = std::random_device{}();
+    rng.seed(seed);
+    solitary_droplet(frame, grid_size); // Creates a lone wolf tear in the fabric of the lattice.
+
+    zd_coordinates header; header.x= i+1; header.y = p; header.z = -1;
+    comp_data.push_back(header); //Serves as a header row, seperating any two random trials.
+
+    for(int j=0; j < length; j++)
+    {
+      //Looping over all the time steps, one at a time.
+      int n = number_of_elem_of_array(frame, grid_size);
+      //Checking if we are creamed or not.
+
+      zd_coordinates temp; //Creating a temporary variable.
+      temp.x = j;
+      temp.y = 0;
+      temp.z = 0;
+
+      if( n == 0)
+      {
+        //There are no active elements left, hence all P(t) and N(t) values for all
+        // subsequent time steps will be 0.
+
+        for(int k =j; k <length; k++)
+        {
+          temp.x = k;
+          comp_data.push_back(temp);
+        }
+        break;
+
+      }
+      else
+      {
+        temp.y = 1; //P(t) =1
+        temp.z = n; //N(t) > 0
+
+        comp_data.push_back(temp);
+      }
+
+      simulate_dp(frame, grid_size, p, 1);
+
+    }
+
+  }
+
+
+
+}
+
 void crtexp_dynamo_dp(int grid_size, double p_start, double p_end, int divisions, int r_init, int length)
 {
   /* THE POINT OF THIS FUNCTION IS TO FIRSTLY ASCERTAIN P_C, FOLLOWED BY DYNAMIC ASCERTATION OF
@@ -3242,8 +3312,7 @@ void crtexp_dynamo_dp(int grid_size, double p_start, double p_end, int divisions
 
   std::vector<zd_coordinates> vec;
   // Stores collated output from parallel method calls in proper ascending order of p values.
-  ofstream output_dp;
-  // Creating a file instance called output to store output data as CSV.
+
 
   stringstream g, div ,p1, p2, rini;
 
@@ -3255,7 +3324,7 @@ void crtexp_dynamo_dp(int grid_size, double p_start, double p_end, int divisions
   p2 << p_end;
   rini << r_init;
 
-  output_dp.open("CrtExp/P_c_DP_G_" + g.str() + "_Div_" + div.str() + "_p1_"+ g1.str() + "_p2_"+ g2.str() + "_R_"+ rini.str() + ".csv");
+  //output_dp.open("CrtExp/P_c_DP_G_" + g.str() + "_Div_" + div.str() + "_p1_"+ p1.str() + "_p2_"+ p2.str() + "_R_"+ rini.str() + ".csv");
   // Creating CSV file.
 
   #pragma omp parallel
@@ -3297,9 +3366,60 @@ void crtexp_dynamo_dp(int grid_size, double p_start, double p_end, int divisions
       }
   }
 
+  vector <vector<double>> output; //Creating 2-D vector to store final output.
+
+  ofstream output_dp;
+  // Creating a file instance called output to store output data as CSV.
+
+  double trialno =1; double p= p_space[0];
+
+  stringstream pugalo; pugalo << setprecision(2) << p;
+  int chk= mkdir(("CrtExp/"+pugalo.str()).c_str(), 0777);
+  output_dp.open("CrtExp/"+pugalo.str()+"/P_c_DP_G_" + g.str() + "_Div_" + div.str() + "_p1_"+ p1.str() + "_R_"+ rini.str() + ".csv");
+  output_dp << " p , # Tr No , t ,  P(t) ,  N(t) \n";
+
+  for(int i=0; i <vec.size(); i++)
+  {
+    if(vec[i].z < 0 && vec[i].y < 1 && vec[i].y >= 0)
+    {
+      //Header line represented by row vector [# No, p, -1]
+
+      if(vec[i].y > p)
+      {
+        //New p value being accessed.
+        output_dp.close();
+        trialno = vec[i].x; p = vec[i].y;
+        stringstream p_new, p_final;
+        p_new << setprecision(2) << p;
+        p_final << p;
+
+        int chk= mkdir(("CrtExp/"+p_new.str()).c_str(), 0777);
+        output_dp.open("CrtExp/"+p_new.str()+"/P_c_DP_G_" + g.str() + "_Div_" + div.str() + "_p1_"+ p_final.str() + "_R_"+ rini.str() + ".csv");
+        output_dp << " p , # Tr No , t ,  P(t) ,  N(t) \n";
+      }
+
+      trialno = vec[i].x; p = vec[i].y;
+      continue;
+    }
+    output.push_back({p, trialno, vec[i].x, vec[i].y, vec[i].z});
+    //Filled as p, # No, t,  P(t), N(t).
+    output_dp << setprecision(8) << p << "," << setprecision(3) << trialno << "," << setprecision(5) << vec[i].x << "," << setprecision(3) << vec[i].y << "," << setprecision(12) << vec[i].z << endl;
+  }
+
+  cout << "The vector elements are: "<< endl;
+  //cout << " p , L, # Tr No , P[p] ,  S[p]\n";
+  cout << " p , # Tr No , t ,  P(t) ,  N(t) \n";
 
 
+ for(int i=0; i <output.size(); i++)
+ {
+   if( i%4800 ==1)
+   {
+     cout << setprecision(8) << output[i][0] << "  " << setprecision(3) << output[i][1] << "  " << setprecision(5) << output[i][2] << "  " << setprecision(2) << output[i][3] << "  " << setprecision(10) << output[i][4] << endl;
+   }
+   //output_dp << setprecision(8) << output[i][0] << "," << setprecision(3) << output[i][1] << "," << setprecision(5) << output[i][2] << "," << setprecision(3) << output[i][3] << "," << setprecision(12) << output[i][4] << endl;
 
-
+ }
+ output_dp.close();
 
 }
