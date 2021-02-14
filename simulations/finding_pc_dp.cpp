@@ -12,7 +12,7 @@ int main() {
 	int number_of_census;
 	int lag;
 
-	cout << "Enter grid size: ";
+	/* cout << "Enter grid size: ";
     cin >> grid_size;
 
     cout << "Enter starting p: ";
@@ -31,13 +31,15 @@ int main() {
     cin >> number_of_census;
 
     cout << "Enter lag in terms of frames: ";
-    cin >> lag;
+    cin >> lag; */
+
+		lag=0; r_init=8; number_of_census=13; grid_size=512;
 
     cout << endl;
 
 	auto start = high_resolution_clock::now();
 
-	pavg_map_pc_dp(grid_size,p_start,p_end,divisions,r_init, number_of_census,lag);
+	pavg_map_pc_dp(grid_size, r_init, number_of_census,lag);
 
 	auto stop = high_resolution_clock::now();
 	auto duration = duration_cast<seconds>(stop - start);

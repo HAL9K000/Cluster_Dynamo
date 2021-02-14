@@ -135,7 +135,8 @@ float theoretical_percolation_probability_dp(int grid_size, float birth_probabil
 void theoretical_percolation_probabilities_dp(int grid_size, float p_start, float p_end, int divisions, int r_init, int number_of_census, int lag);
 double theoret_percol_prob_denovo_dp(int grid_size, float birth_probability, int r_init, int number_of_census, int lag);
 void calculate_pc_dp(int grid_size, float p_start, float p_end, int divisions, int r_init, int number_of_census, int lag);
-void pavg_map_pc_dp(int grid_size,float p_start, float p_end, int divisions, int r_init, int number_of_census, int lag);
+void pavg_map_pc_dp(int grid_size, int r_init, int number_of_census, int lag);
+//void pavg_map_pc_dp(int grid_size,float p_start, float p_end, int divisions, int r_init, int number_of_census, int lag);
 
 // ---------------------------------- ACF NP ---------------------------------------------------------------------//
 

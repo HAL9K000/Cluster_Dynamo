@@ -2668,14 +2668,14 @@ void calculate_pc_dp(int grid_size, float p_start, float p_end, int divisions, i
 }
 
 
-void pavg_map_pc_dp(int grid_size,float p_start, float p_end, int divisions, int r_init, int number_of_census, int lag)
+void pavg_map_pc_dp(int grid_size, int r_init, int number_of_census, int lag)
 {
 
-  //Using Beta Technique in Hirinschen 2000 to find p_c.
-  int updates_per_site=100000;
-  vector<double> birth_probabilities = linspace(p_start, p_end, divisions); // create a vector of specified values of p
+  //Using Stauffer-Aharony to find infinite percolation threshold.
+  int updates_per_site=50000;
+  //vector<double> birth_probabilities = linspace(p_start, p_end, divisions); // create a vector of specified values of p
 
-  double rho_stat[divisions] = {0}; // initialize percolation probabilities
+  //double rho_stat[divisions] = {0}; // initialize percolation probabilities
 
   ofstream output;
   // Creating a file instance called output to store output data as CSV.
@@ -2684,53 +2684,71 @@ void pavg_map_pc_dp(int grid_size,float p_start, float p_end, int divisions, int
   std::vector<zd_coordinates> vec;
   // Stores collated output from parallel method calls in proper scending order of grid sizes.
 
-  stringstream p_st, p_en, rini, lagger;
+  stringstream g, rini;
 
-  p_st << setprecision(3) << p_start;
-  p_en << setprecision(3) << p_end;
+  /**p_st << setprecision(3) << p_start;
+  p_en << setprecision(3) << p_end; */
   // setprecision() is a stream manipulator that sets the decimal precision of a variable.
   rini << r_init;
-  lagger << lag;
-  output.open("Theoretical_Percol/Rho_DP_L_"+ std::to_string(grid_size) + "_p1_" + p_st.str() + "_p2_" + p_en.str() + "_Cen_"+ std::to_string(number_of_census) + "_R_"+ rini.str() + "_Lag_" + lagger.str() + ".csv");
+  g << grid_size;
+
+  output.open("Theoretical_Percol/DP_L_"+ g.str() +  "_Cen_"+ std::to_string(number_of_census) + "_R_"+ rini.str() + ".csv");
   // Creating CSV file in "Theoretical_Percol" sub-directory to store output data.
 
   //outputbeta.open("CrtExp/Beta_DP_L_"+ std::to_string(grid_size) + "_p1_" + p_st.str() + "_p2_" + p_en.str() + "_Cen_"+ std::to_string(number_of_census) + "_R_"+ rini.str() + ".csv");
 
   #pragma omp parallel // The implementation below is obtain a order of percolation probabilities that shadows the order of birth_probabilities
   {
-    double rho_stat_private[divisions] = {0};
+    std::vector<zd_coordinates> vec_private;
 
-    #pragma omp for
-    for (int i=0; i < divisions; i++){
+    //Grants a static schedule with a chunk size of 1.
+    /* Based on procedure suggested in:
+    https://stackoverflow.com/questions/18669296/c-openmp-parallel-for-loop-alternatives-to-stdvector */
+
+    #pragma omp for nowait schedule(static)
+    for (int i=0; i < r_init; i++)
+    {
 
       stringstream message;     //To make cout thread-safe as well as non-garbled due to race conditions.
-      message << "We are working on Occupy WS Prob:\t" << birth_probabilities[i] <<endl;
+      message << "We are working on Occupy WS Trial:\t" << i <<endl;
       cout << message.str();
 
+      int frame[grid_size*grid_size];
       int seed = std::random_device{}();
       rng.seed(seed);
+      random_frame(frame, grid_size); // Assign a random frame
+      simulate_dp(frame,grid_size,0.5,updates_per_site);
 
-      rho_stat_private[i] = equilibrium_density_dp(grid_size, birth_probabilities[i], r_init, number_of_census, lag, updates_per_site, 0);
+      zd_coordinates temp = binsearch_p_c(0.5, frame, grid_size, number_of_census, seed);
+      //Stores [L,p, p^2] value for a particular trial.
+
+      vec_private.push_back(temp);
+      //rho_stat_private[i] = equilibrium_density_dp(grid_size, birth_probabilities[i], r_init, number_of_census, lag, updates_per_site, 0);
       // No collection of frames
     }
-      #pragma omp critical
-      {
-          for(int n=0; n < divisions; ++n) {
-              rho_stat[n] += rho_stat_private[n];
-          }
-      }
-  }
+    #pragma omp for schedule(static) ordered
+    for(int i=0; i< omp_get_num_threads(); i++)
+    {
+      #pragma omp ordered
+        vec.insert(vec.end(), vec_private.begin(), vec_private.end());
+        // Inserting p-values for each trial in order.
+        stringstream message3;
+        message3 << "Is this happening?\n";
+        cout << message3.str();
 
-  for (int i=0; i< divisions; i++){
-    cout << "p " << setprecision(7) << birth_probabilities[i] << " Rho Stat " << setprecision(5) << rho_stat[i] << endl;
+    }
+  }
+  cout << " L, # Tr No , p\n";
+  for (int i=0; i<vec.size(); i++){
+    cout << vec[i].x << " " << setprecision(5) << i << " " << setprecision(10) << vec[i].y << endl;
     // Prints parameter value and percolation probabilities to the terminal. The ordering is the same as the order of p in birth_probabilities
   }
 
   // Writing results to CSV File.
 
-  output << "# Birth Probability (p) ,  Rho Stat \n";
-  for (int i=0; i< divisions; i++){
-    output << setprecision(8) << birth_probabilities[i] << "," << setprecision(10) << rho_stat[i] << endl;
+  output << "# L, # Tr No , p\n";
+  for (int i=0; i<vec.size(); i++){
+    output << vec[i].x << "," << setprecision(5) << i << ","  << setprecision(10) << vec[i].y << endl;
     // Prints parameter value and percolation probabilities to the terminal. The ordering is the same as the order of p in birth_probabilities
   }
   output.close();
@@ -2930,7 +2948,7 @@ void output_dump(int frame[], int grid_size, int i, double p, int labels[], vect
 
 zd_coordinates binsearch_p_c(double p, int frame[], int grid_size, int num, int seed)
 {
-  int updates_per_site =8000;
+  int updates_per_site =50000;
   // Using binary search to find first instance of grid percolation.
   double p_old= 2*p;
   for( int i=0; i < num; i++)
