@@ -386,6 +386,90 @@ void dp_update(int frame[], int grid_size, float birth_probability){
 	}
 }
 
+
+void tp_update(int frame[], int grid_size, float birth_probability, float feedback_strength)
+{
+
+	/* Performs single asynchronous update for TP at a randomly selected site on the lattice
+
+  Transitions take place as per the procedure delineated in LUBECK 2006.
+
+  A ---> 0     with probability (1-q)(1-p)
+  AA ---> 0A      with probability (1-q)(1-p) [Subcase of above]
+  0A ---> 00      with probability q(1-p)
+  0A ---> AA      with probability (1-q)(p)
+  0AA ---> AAA      with probability q
+
+  */
+
+	int x = random_int(0, grid_size-1);
+	int y = random_int(0, grid_size-1);
+
+	coordinates site;
+	site.x = x;
+	site.y = y;
+
+	if (frame[x*grid_size+y]==1)
+  { // selected site is occupied
+
+		coordinates neighbour = select_neighbor_of_site(site,grid_size);
+
+		if (frame[neighbour.x*grid_size+neighbour.y]==1)
+    { // neighbour of focal site is occupied. TCP like updates in this case
+
+			double chance = random_real(0, 1);
+      double another_chance = random_real(0, 1);
+
+			if (chance < feedback_strength)
+      {
+				coordinates neighbour_of_pair = select_neighbor_of_pair(site,neighbour,grid_size);
+				frame[neighbour_of_pair.x*grid_size+neighbour_of_pair.y] = 1; // birth at neighbour of pair with enhanced probability q
+			}
+			else if (another_chance < 1-birth_probability)
+      {
+
+				frame[x*grid_size+y]=0; // death at focal site with diminished death probability (1-q)(1-p)
+        /** AA ---> 0A      (1-q)(1-p) */
+			}
+    }
+    else
+    { // neighbour of focal site is unoccupied. We have the plain old DP, but with a fresh twist.
+
+
+			double chance = random_real(0, 1);
+      double another_chance = random_real(0, 1);
+
+			if (chance < 1 - feedback_strength)
+      {
+        if( another_chance < birth_probability)
+        {
+				      frame[neighbour.x*grid_size+neighbour.y] = 1; //birth at neighbour of occupied focal site with probability (1-q)*p
+              /** 0A ---> AA      (1-q)(p) */
+        }
+        else
+        {
+          frame[x*grid_size+y]=0; //Death at focal site with probability (1-q)(1-p)
+          /** A0 ---> 00      (1-q)(1-p)
+
+          When taken together with AA ---> 0A transition above, we collectively have the transition:
+           A ---> 0     with prob (1-q)(1-p)
+           This is the probability of the focal site becomes empty, irrespective of the status of it's neighbouring site.
+          */
+        }
+			}
+			else if( another_chance < 1 - birth_probability) //Chance < q
+      {
+				  frame[x*grid_size+y]=0; //Death at focal site with probability q(1-p)
+          /** 0A ---> 00      q(1-p) */
+			}
+		}
+
+	}
+}
+
+/** UPDATE RULES PROVIDED BY AYAN BEFORE:
+
+
 void tp_update(int frame[], int grid_size, float birth_probability, float feedback_strength){
 
 	// performs single asynchronous update for TP at a randomly selected site on the lattice
@@ -429,6 +513,8 @@ void tp_update(int frame[], int grid_size, float birth_probability, float feedba
 		}
 	}
 }
+
+*/
 
 void simulate_np(int frame[], int grid_size, float birth_probability, int updates_per_site){
 
@@ -1042,6 +1128,120 @@ void iter_patch_sizes_np(int grid_size, float p_start, float p_end, int division
     outputtau << setprecision(3) << output[i][0] << "," << setprecision(6) << output[i][1] << "," << setprecision(8) << output[i][2] << "," << setprecision(8) << output[i][3] << endl;
   }
   outputtau.close();
+
+}
+
+void tau_patch_size_find_tcp(int grid_size, vector<zd_coordinates>& tau_data, double p, double q, int r_init, int number_of_census, int lag)
+{
+  // For a given value of p, generate "number_of_census" updates of static frames, each lag distance apart.
+
+  int frame[grid_size*grid_size];
+	int updates_per_site = 100000; // NP reaches steady state by 100,000 for all values of p
+  //DP reaches steady state by 50000 for all values of p.
+  long limit = r_init*number_of_census;     //Stores the length of percolation_probabilities array necessary.
+	double percolation_probabilities[limit];
+
+	//simulate_np(frame,grid_size,birth_probability,updates_per_site); // simulate NP till it reaches steady state
+
+  //simulate_dp(frame,grid_size,birth_probability,updates_per_site);
+
+  for(int i = 0; i < r_init ; i++)
+  {
+    int seed = std::random_device{}();
+    rng.seed(seed);
+    random_frame(frame, grid_size); // Assign a random frame
+    simulate_tcp(frame,grid_size,p, q, updates_per_site); // simulate TCP till it reaches steady state
+
+    for (int j = 0; j < number_of_census; ++j)
+    {
+      float k=0; // Stores the percolation strength, if applicable.
+
+      simulate_tcp(frame,grid_size,p,q, lag);
+
+      int labels[grid_size*grid_size] = {0}; // initialize all sites of label lattice to 0
+
+      vector<cluster> clusters; // See cluster_dynamics.h for the data structure cluster. It has two attributes: label and coords.
+
+      find_clusters_free_boundary(frame, labels, clusters, grid_size);
+      // Segregates clusters, populates labels lattice and accumulates clusters with free boundary conditions
+
+      vector<coordinates> cluster_details;
+      // Stores label id in x attribute, cluster size associated with label in 2nd coordinate.
+
+      vector<int> spanning_cluster_labels = spanning_cluster_label_id(frame, grid_size, labels, clusters);
+      //Returns labels of spanning cluster(s) if present, -1 otherwise.
+
+      //Purpose of following nested loops is to populate cluster_details following data structure noted above,
+      //minus the details of the spanning cluster(s).
+    	for (int a=0; a<clusters.size(); a++)
+      {
+          // There may exist a spanning cluster.
+          int flag=0; //Flag variable used to detect match with spanning cluster(s).
+          if(spanning_cluster_labels[0]> -1)
+          { //There exists a spanning cluster.
+            for (int b=0; b<spanning_cluster_labels.size(); b++)
+            {
+              //Iterating over spanning cluster(s) indices.
+              if(spanning_cluster_labels[b] == clusters[a].label)
+              { flag=1;}
+            }
+          }
+          if(flag == 0)
+          {
+            //No match of given cluster with spanning cluster.
+            coordinates temp; //Temporary x, y variable declared.
+            temp.x = clusters[a].label;
+            temp.y = clusters[a].coords.size();
+            cluster_details.push_back(temp);
+          }
+      }
+
+      double bok= i*number_of_census + j + 1; //Stores current trial number
+
+      if (static_cast<int>(bok)% 40 == 1)
+      {
+        //Every 25th term, the following  will be outputted to help with debugging.
+        stringstream message;     //To make cout thread-safe as well as non-garbled due to race conditions.
+        if(spanning_cluster_labels[0]> -1)
+        { message << "1st spanning clust size:\t" << clusters[spanning_cluster_labels[0]-1].coords.size() << "\t Num of spn clust:\t" << spanning_cluster_labels.size() << "\n";  }
+        else
+        { message << "No Spanning Cluster Present. \n"; }
+        cout << message.str();
+
+      }
+      zd_coordinates bokaro = {bok, p, q};
+      tau_data.push_back(bokaro);
+      //All "headers" seperating different trials have (tr #, p, q) values in place of (p, s, n_s)
+
+      vector<zd_coordinates> trail_data = gen_ns_data(cluster_details, p);
+      //Sorting cluster_details in ascending order of s, and outputting (p,s, n_s(p,s)) data from it.
+
+      tau_data.insert(tau_data.end(), trail_data.begin(), trail_data.end());
+
+      if (spanning_cluster_labels[0] != -1)
+      {
+        //Spanning cluster(s) present
+        for (int r =0 ; r < spanning_cluster_labels.size(); r++)
+        {
+          k += (float) clusters[spanning_cluster_labels[r]-1].coords.size();
+        }
+      }
+      bokaro.x = p; bokaro.y = -10.0; bokaro.z = k;
+      //Finally, storing details of spanning cluster at the very end as (p, -10, size_spn_cls)
+      // Here s= -10 is the marker for spanning cluster. If absent, k =0
+      tau_data.push_back(bokaro);
+
+      trail_data.clear(); clusters.clear(); spanning_cluster_labels.clear(); cluster_details.clear();
+
+
+    } //End of census for loop.
+
+  } //End of outer loop.
+
+  stringstream message;     //To make cout thread-safe as well as non-garbled due to race conditions.
+  message << "Length of tau_data for all trials at this given p:\t" << tau_data.size() << "\n";
+  cout << message.str();
+
 
 }
 
@@ -2754,6 +2954,88 @@ void pavg_map_pc_dp(int grid_size, int r_init, int number_of_census, int lag)
   output.close();
 }
 
+
+void pavg_map_pc_tcp(double q, int grid_size, int r_init, int number_of_census, int lag)
+{
+
+  //Using Stauffer-Aharony to find infinite percolation threshold in TCP set-up.
+  int updates_per_site=50000;
+
+  ofstream output;
+  // Creating a file instance called output to store output data as CSV.
+  ofstream outputpc;
+
+  std::vector<zd_coordinates> vec;
+  // Stores collated output from parallel method calls in proper scending order of grid sizes.
+
+  stringstream g, q_no, rini;
+  // setprecision() is a stream manipulator that sets the decimal precision of a variable.
+  rini << r_init;
+  q_no << q;
+  g << grid_size;
+
+    output.open("Theoretical_Percol/TCP_L_"+ g.str() + "_Q_"+ q_no.str() +  "_Cen_"+ std::to_string(number_of_census) + "_R_"+ rini.str() + ".csv");
+  // Creating CSV file in "Theoretical_Percol" sub-directory to store output data.
+
+  //outputbeta.open("CrtExp/Beta_DP_L_"+ std::to_string(grid_size) + "_p1_" + p_st.str() + "_p2_" + p_en.str() + "_Cen_"+ std::to_string(number_of_census) + "_R_"+ rini.str() + ".csv");
+
+  #pragma omp parallel // The implementation below is obtain a order of percolation probabilities that shadows the order of birth_probabilities
+  {
+    std::vector<zd_coordinates> vec_private;
+
+    //Grants a static schedule with a chunk size of 1.
+    /* Based on procedure suggested in:
+    https://stackoverflow.com/questions/18669296/c-openmp-parallel-for-loop-alternatives-to-stdvector */
+
+    #pragma omp for nowait schedule(static)
+    for (int i=0; i < r_init; i++)
+    {
+
+      stringstream message;     //To make cout thread-safe as well as non-garbled due to race conditions.
+      message << "We are working on Occupy WS Trial:\t" << i <<endl;
+      cout << message.str();
+
+      int frame[grid_size*grid_size];
+      int seed = std::random_device{}();
+      rng.seed(seed);
+      random_frame(frame, grid_size); // Assign a random frame
+      simulate_tp(frame,grid_size,0.5, q, updates_per_site);
+
+      zd_coordinates temp = binsearch_p_c_TCP(0.5, q, frame, grid_size, number_of_census, seed);
+      //Stores [L,p, p^2] value for a particular trial.
+
+      vec_private.push_back(temp);
+      //rho_stat_private[i] = equilibrium_density_dp(grid_size, birth_probabilities[i], r_init, number_of_census, lag, updates_per_site, 0);
+      // No collection of frames
+    }
+    #pragma omp for schedule(static) ordered
+    for(int i=0; i< omp_get_num_threads(); i++)
+    {
+      #pragma omp ordered
+        vec.insert(vec.end(), vec_private.begin(), vec_private.end());
+        // Inserting p-values for each trial in order.
+        stringstream message3;
+        message3 << "Is this happening?\n";
+        cout << message3.str();
+
+    }
+  }
+  cout << "q,  L, # Tr No , p\n";
+  for (int i=0; i<vec.size(); i++){
+    cout << q << " " << vec[i].x << " " << setprecision(5) << i << " " << setprecision(10) << vec[i].y << endl;
+    // Prints parameter value and percolation probabilities to the terminal. The ordering is the same as the order of p in birth_probabilities
+  }
+
+  // Writing results to CSV File.
+
+  output << "#q, L, # Tr No , p\n";
+  for (int i=0; i<vec.size(); i++){
+    output << q << "," << vec[i].x << "," << setprecision(5) << i << ","  << setprecision(10) << vec[i].y << endl;
+    // Prints parameter value and percolation probabilities to the terminal. The ordering is the same as the order of p in birth_probabilities
+  }
+  output.close();
+}
+
 //----------------------------- Function For Calculating Custom ACF Data----------------------------------------//
 
 
@@ -2944,6 +3226,51 @@ void output_dump(int frame[], int grid_size, int i, double p, int labels[], vect
         ofputter << '\n';
     }
   ofputter.close();
+  }
+
+zd_coordinates binsearch_p_c_TCP(double p, double q, int frame[], int grid_size, int num, int seed)
+  {
+    int updates_per_site =50000;
+    // Using binary search to find first instance of grid percolation.
+    double p_old= 2*p;
+    for( int i=0; i < num; i++)
+    {
+      int labels[grid_size*grid_size] = {0}; // initialize all sites of label lattice to 0
+      vector <cluster> clusters;
+      find_clusters_free_boundary(frame, labels, clusters, grid_size);
+      // Performing DFS, finding clusters.
+
+      vector<int> spanning_cluster_labels = spanning_cluster_label_id(frame, grid_size, labels, clusters);
+      if (spanning_cluster_labels[0] != -1)
+      {
+        //There exists a spanning cluster, search for cluster in lower half-interval.
+        double temp = p;
+        p -= fabs( p_old - temp )/2;
+        p_old = temp;
+      }
+      else
+      {
+        // No spanning cluster found, search for spanning cluster in upper half-interval.
+        double temp = p;
+        p += fabs( p_old - temp )/2;
+        p_old = temp;
+      }
+      rng.seed(seed);
+      //random_frame_of_density(p, frame, grid_size);
+      // Generating new random frame (with same seed) in half-interval
+
+      random_frame(frame, grid_size); // Assign a random frame (with same seed) in half-interval
+      simulate_tp(frame,grid_size,p, q, updates_per_site);
+      // Simulate DP to equilibrium with p
+    }
+
+    zd_coordinates arkham; //Dummy variable.
+    arkham.x = grid_size;
+    arkham.y = p;
+    arkham.z = (double) p*p;
+
+    return arkham;
+
   }
 
 zd_coordinates binsearch_p_c(double p, int frame[], int grid_size, int num, int seed)

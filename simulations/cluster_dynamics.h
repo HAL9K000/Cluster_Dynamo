@@ -93,6 +93,10 @@ bool sort_s_cluster(coordinates a, coordinates b);
 void tau_patch_size_find_np(int grid_size,vector<zd_coordinates>& tau_data, double p, int r_init=5, int number_of_census=25, int lag=12);
 void iter_patch_sizes_np(int grid_size, float p_start, float p_end, int divisions, int r_init=5, int number_of_census=25, int lag=12);
 
+//-----------------------------------Critical Exponent Tau (TCP)--------------------------------//
+
+void tau_patch_size_find_tcp(int grid_size, vector<zd_coordinates>& tau_data, double p, double q, int r_init, int number_of_census, int lag);
+
 //------------------------------------Cluster Dynamics----------------------------------------//
 
 void find_neighbours_of_site(coordinates neighbours[4], coordinates site, int grid_size);
@@ -130,6 +134,10 @@ int size_spanning_vertical(int frame[], int grid_size);
 int size_spanning_horizontal(int frame[], int grid_size);
 int size_spanning_2D(int frame[], int grid_size);
 float theoretical_percolation_probability_np(int grid_size, float birth_probability, int r_init, int number_of_census, int lag);
+
+
+// --------------------------------Theoretical Percolation Graphs & P_C estimation (DP) ---------------------------------??
+
 void theoretical_percolation_probabilities_np(int grid_size, float p_start, float p_end, int divisions, int r_init, int number_of_census, int lag);
 float theoretical_percolation_probability_dp(int grid_size, float birth_probability, int r_init, int number_of_census, int lag);
 void theoretical_percolation_probabilities_dp(int grid_size, float p_start, float p_end, int divisions, int r_init, int number_of_census, int lag);
@@ -138,13 +146,20 @@ void calculate_pc_dp(int grid_size, float p_start, float p_end, int divisions, i
 void pavg_map_pc_dp(int grid_size, int r_init, int number_of_census, int lag);
 //void pavg_map_pc_dp(int grid_size,float p_start, float p_end, int divisions, int r_init, int number_of_census, int lag);
 
+//----------------------------- P_C Estimation & Theoretical Percol (TCP)--------------------------------------------------//
+void pavg_map_pc_tcp(double q, int grid_size, int r_init, int number_of_census, int lag);
+
 // ---------------------------------- ACF NP ---------------------------------------------------------------------//
 
 float xdynamic(int frame[], int grid_size);
 void acf_np(int grid_size, vector<f_coordinates>& acf_data, float p, int length, int lag);
 void acf_np_custom(int grid_size, float p, int divisions, int length, int lag);
 
-// --------------------------------- Crtical Exponents (Beta, Gamma etc) [Finite Scaling]------------------------//
+// --------------------------------- Crtical Exponents (Beta, Gamma etc) [Finite Scaling] [TCP]------------------------//
+
+zd_coordinates binsearch_p_c_TCP(double p, double q, int frame[], int grid_size, int num, int seed);
+
+// --------------------------------- Crtical Exponents (Beta, Gamma etc) [Finite Scaling] [NP/DP]------------------------//
 
 zd_coordinates binsearch_p_c(double p, int frame[], int grid_size, int num, int seed);
 void crtexp_nu(int grid_size,vector<zd_coordinates> &comp_data, int r_init, int number_of_census);
