@@ -1150,13 +1150,13 @@ void tau_patch_size_find_tcp(int grid_size, vector<zd_coordinates>& tau_data, do
     int seed = std::random_device{}();
     rng.seed(seed);
     random_frame(frame, grid_size); // Assign a random frame
-    simulate_tcp(frame,grid_size,p, q, updates_per_site); // simulate TCP till it reaches steady state
+    simulate_tp(frame,grid_size,p, q, updates_per_site); // simulate TCP till it reaches steady state
 
     for (int j = 0; j < number_of_census; ++j)
     {
       float k=0; // Stores the percolation strength, if applicable.
 
-      simulate_tcp(frame,grid_size,p,q, lag);
+      simulate_tp(frame,grid_size,p,q, lag);
 
       int labels[grid_size*grid_size] = {0}; // initialize all sites of label lattice to 0
 
@@ -1239,7 +1239,7 @@ void tau_patch_size_find_tcp(int grid_size, vector<zd_coordinates>& tau_data, do
   } //End of outer loop.
 
   stringstream message;     //To make cout thread-safe as well as non-garbled due to race conditions.
-  message << "Length of tau_data for all trials at this given p:\t" << tau_data.size() << "\n";
+  message << "Length of tau_data for all trials at this given p and q:\t" << tau_data.size() << "\n";
   cout << message.str();
 
 
@@ -3187,7 +3187,7 @@ void acf_np_custom(int grid_size, float p, int divisions, int length, int lag)
 
 
 
-//------------------------------------ Finite Scaling Gimmickery ---------------------------------
+//------------------------------------ Finite Scaling Gimmickery (TCP) ---------------------------------
 
 void output_dump(int frame[], int grid_size, int i, double p, int labels[], vector <cluster>& clusters, vector<int>& spanning_cluster_labels)
 {
@@ -3272,6 +3272,188 @@ zd_coordinates binsearch_p_c_TCP(double p, double q, int frame[], int grid_size,
     return arkham;
 
   }
+
+void crtexp_gamma_TCP(int grid_size,vector<zd_coordinates> &comp_data, double p, double q, int r_init, int number_of_census, int lag)
+  {
+    // Using the formal definition of the average cluster size.
+    //int lag=5000;
+    tau_patch_size_find_tcp(grid_size, comp_data, p, q, r_init, number_of_census, lag);
+    // Returns comp_data in the form of (p, s, n_s(p,q)).
+    // We need to modify p with L.
+
+    for(int i=0; i < comp_data.size(); i++)
+    {
+      if(comp_data[i].z >= 1)
+      {
+        // i.e Not A Header File [{#, p, q}] OR row denoting 0 P(p) [{p, -10, 0}]
+        comp_data[i].x = grid_size;
+        comp_data[i].z /= (grid_size*grid_size);
+      }
+      if(comp_data[i].y < 0)
+      {
+        // We have ourselves a null ('0') percolation strength newline [{p, -10, 0}]
+        comp_data[i].x = grid_size;
+      }
+    }
+
+    stringstream msg;
+    msg << "Hola\n";
+    cout << msg.str();
+  }
+
+void finite_scaling_crtexp_TCP(int grid_sizes[], double p, double q, string type, int divisions, int r_init, int number_of_census, int lag)
+{
+    //This method will find finite scaling relations for a given p ----------------> p_c.
+
+    //int r_init =25;
+    //number_of_census= 1;
+
+    type= "Gam";
+
+    std::vector<zd_coordinates> vec;
+    // Stores collated output from parallel method calls in proper scending order of grid sizes.
+    ofstream outputfinsc;
+    // Creating a file instance called output to store output data as CSV.
+
+    stringstream peon, quint, div ,g1, g2;
+
+    peon << setprecision(4) << p;
+    qunit << setprecision(3) << q;
+    //p_en << setprecision(3) << p_end;
+    // setprecision() is a stream manipulator that sets the decimal precision of a variable.
+    div << divisions;
+    g1 << grid_sizes[0];
+    g2 << grid_sizes[divisions-1];
+    if (type == "Nu" || type == "Gam")
+      {
+        outputfinsc.open("CrtExp/FinSc"+ type +"_TCP_p_" + peon.str() + "_q_" + quint.str() + "_Div_" + div.str() + "_G1_"+ g1.str() + "_G2_"+ g2.str() + ".csv");
+      }
+    else
+      {
+        //Default is Beta/Gamma Computation.
+        outputfinsc.open("CrtExp/FinSc_TCP_p_" + peon.str() + "_q_" + quint.str() + "_Div_" + div.str() + "_G1_"+ g1.str() + "_G2_"+ g2.str() + ".csv");
+      }
+
+    // Creating CSV file in "ACF" sub-directory to store output data
+
+    #pragma omp parallel
+    {
+        std::vector<zd_coordinates> vec_private;
+
+        //Grants a static schedule with a chunk size of 1.
+        /* Based on procedure suggested in:
+        https://stackoverflow.com/questions/18669296/c-openmp-parallel-for-loop-alternatives-to-stdvector */
+
+        #pragma omp for nowait schedule(static)
+        for (int i=0; i < divisions; i++)
+        {
+          //type="Gam";
+          stringstream message;     //To make cout thread-safe as well as non-garbled due to race conditions.
+          message << "We are working on Grid Size:\t" << grid_sizes[i] <<endl;
+          cout << message.str();
+          int seed = std::random_device{}();
+          rng.seed(seed);
+
+          std::vector<zd_coordinates> comp_data;
+
+          if(type == "Nu")
+          {
+            //crtexp_nu(grid_sizes[i], comp_data, r_init, number_of_census);
+            continue;
+            //Finds and returns nu (critical exponent) related data for a given grid_size
+            // Returns {L, p, p^2}
+          }
+          else if(type =="Gam")
+          {
+            crtexp_gamma_TCP(grid_sizes[i], comp_data, p, q, r_init, number_of_census, lag);
+            //Finds and returns gamma (critical exponent) related data for a given grid_size
+            // Returns {L, p, p^2}
+          }
+
+          vec_private.insert(vec_private.end(), comp_data.begin(), comp_data.end());
+
+        }
+
+        #pragma omp for schedule(static) ordered
+        for(int i=0; i< omp_get_num_threads(); i++)
+        {
+          #pragma omp ordered
+            vec.insert(vec.end(), vec_private.begin(), vec_private.end());
+            // Inserting critical exponent data for each grid size in order.
+            stringstream message3;
+            message3 << "Is this happening?\n";
+            cout << message3.str();
+
+        }
+    }
+    cout << "Game Over" << endl;
+    vector <vector<double>> output;
+    //Creating 2D vector to store final output
+
+    if(type == "Gam")
+    {
+      double trialno =1; double q_anon=q;
+      for(int i=0; i <vec.size(); i++)
+      {
+        if(vec[i].z < 1 && vec[i].y < 1 && vec[i].y >=0)
+        {
+          //Header line represented by row vector [# No, p, q]
+          trialno = vec[i].x; q_anon= vec[i].z;
+          continue;
+        }
+        output.push_back({p, q_anon, vec[i].x, trialno, vec[i].y, vec[i].z});
+        //Filled as p,q, L, # No, s, n_s(p).
+      }
+    }
+    else
+    {
+      double trialno =1;
+      for(int i=0; i <vec.size(); i++)
+      {
+        int j = i % r_init;
+        int trl_no = j % number_of_census + 1; int r_no = int(j/number_of_census);
+        trialno = r_no*number_of_census + trl_no;
+
+        output.push_back({p, q, vec[i].x, trialno, vec[i].y, vec[i].z});
+        //Filled as p, q, L, # No, P(p), S(p)
+      }
+    }
+
+
+    //Printing out obtained results.
+    cout << "The vector elements are: "<< endl;
+    //cout << " p , L, # Tr No , P[p] ,  S[p]\n";
+    if(type == "Nu")
+    {
+      cout << " p , q, L, # Tr No , p ,  p^2 \n";
+      outputfinsc << " p , q, L, # Tr No , p ,  p^2 \n";
+    }
+    else if(type == "Gam")
+    {
+      cout << " p , q, L, # Tr No , s ,  n_s(p) \n";
+      outputfinsc << " p , q, L, # Tr No , s ,  n_s(p) \n";
+    }
+    else
+    {
+      cout << " p ,q, L, # Tr No , s ,  ns_(p)\n";
+      outputfinsc << " p ,q, L, # Tr No , P[p] ,  S[p]\n";
+    }
+    for (int i = 0; i < output.size(); i++)
+    {
+      cout << setprecision(8) << output[i][0] << "  " << setprecision(3) << output[i][1] << "  " << setprecision(5) << output[i][2] << "  " << setprecision(3) << output[i][3] << "  " << setprecision(16) << output[i][4] << "  " << setprecision(16) << output[i][5] << endl;
+    }
+    // Saving to aforementioned CSV
+
+    for (int i = 0; i < output.size(); i++)
+    {
+      outputfinsc << setprecision(8) << output[i][0] << "," << setprecision(5) << output[i][1] << "  " << setprecision(8) << output[i][2] << "," << setprecision(3) << output[i][3] << "," << setprecision(16) << output[i][4] << "," << setprecision(16) << output[i][5] << endl;
+    }
+    outputfinsc.close();
+
+
+  }
+
+//--------------------------------- Crtical Exponents (Beta, Gamma etc) [Finite Scaling] [NP/DP]------------------------//
 
 zd_coordinates binsearch_p_c(double p, int frame[], int grid_size, int num, int seed)
 {

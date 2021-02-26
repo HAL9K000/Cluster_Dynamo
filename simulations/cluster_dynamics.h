@@ -158,6 +158,8 @@ void acf_np_custom(int grid_size, float p, int divisions, int length, int lag);
 // --------------------------------- Crtical Exponents (Beta, Gamma etc) [Finite Scaling] [TCP]------------------------//
 
 zd_coordinates binsearch_p_c_TCP(double p, double q, int frame[], int grid_size, int num, int seed);
+void crtexp_gamma_TCP(int grid_size,vector<zd_coordinates> &comp_data, double p, double q, int r_init, int number_of_census, int lag=5000);
+void finite_scaling_crtexp_TCP(int grid_sizes[], double p, double q, string type, int divisions, int r_init, int number_of_census, int lag=5000);
 
 // --------------------------------- Crtical Exponents (Beta, Gamma etc) [Finite Scaling] [NP/DP]------------------------//
 

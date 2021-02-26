@@ -222,11 +222,13 @@ def delt_thet_determination(p, CrtData, T, L, b):
     for t in T:
         t_b = int(t/b)
         if(CrtData[t,1] == 0):
+            #If <P(t)> == 0 for some t.
             delt_t= -1
         else:
             delt_t= -math.log10((CrtData[t,1]/CrtData[t_b,1]))/math.log10(b)
         L.append(delt_t)
     for t in T:
+        #If <N(t)> == 0 for some t.
         t_b = int(t/b)
         if(CrtData[t,2] == 0):
             thet_t= -1
