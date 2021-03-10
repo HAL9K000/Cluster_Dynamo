@@ -34,9 +34,9 @@ int main()
 
   cout << endl;
 
-	p= 0.72338; q=0.03; // Percolation Threshold For DP Universality Class
-	r_init = 2; number_of_census = 5; lag= 10000;
-	divisions= 8; g1= 5; g2= 5.875;
+	p= 0.719177; q=0.06; // Percolation Threshold For DP Universality Class
+	r_init = 20; number_of_census = 5; lag= 10000;
+	divisions= 8; g1= 7.5; g2= 8.375;
 
   vector<double> grid_pow = linspace(g1, g2, divisions);
 

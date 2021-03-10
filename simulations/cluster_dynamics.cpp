@@ -3318,7 +3318,7 @@ void finite_scaling_crtexp_TCP(int grid_sizes[], double p, double q, string type
     stringstream peon, quint, div ,g1, g2;
 
     peon << setprecision(4) << p;
-    qunit << setprecision(3) << q;
+    quint << setprecision(3) << q;
     //p_en << setprecision(3) << p_end;
     // setprecision() is a stream manipulator that sets the decimal precision of a variable.
     div << divisions;
