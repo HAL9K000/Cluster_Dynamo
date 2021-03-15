@@ -34,7 +34,7 @@ int main() {
     cout << "Enter lag in terms of frames: ";
     cin >> lag; */
 
-		lag=0; r_init=8; number_of_census=15; grid_size=512; q=0.00;
+		lag=0; r_init=8; number_of_census=15; grid_size=512; q=0.1;
 
     cout << endl;
 

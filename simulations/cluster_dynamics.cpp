@@ -1630,7 +1630,7 @@ void find_equilibrium_single_shot_transformations_tp(int grid_size, float birth_
 
 		tp_update(current_frame, grid_size, birth_probability, feedback_strength); // make a single update to the current frame
 
-		current_frame_clusters.clear(); // wash the stale clusters of the current frame (since it has been updated now)
+		current_frame_clusters.clear(); // wash the stale clusters off the current frame (since it has been updated now)
 		zeros(current_frame_labels,grid_size); // wash the labels too
 
 		find_clusters(current_frame,current_frame_labels,current_frame_clusters,grid_size);
