@@ -106,7 +106,8 @@ int check_presence(std::vector<int> vec,int element);
 void find_transformations_single_shot(vector<transformation>& transformations, int previous_frame[], int previous_frame_labels[],vector<cluster>& previous_frame_clusters,  int current_frame[], int current_frame_labels[], vector<cluster>& current_frame_clusters, int grid_size);
 void find_equilibrium_single_shot_transformations_np(int grid_size, float birth_probability, int time_to_equilibrium, int how_many, vector<transformation>& transformations);
 void find_equilibrium_single_shot_transformations_dp(int grid_size, float birth_probability, int time_to_equilibrium, int how_many, vector<transformation>& transformations);
-void find_equilibrium_single_shot_transformations_tp(int grid_size, float birth_probability, float feedback_strength, int time_to_equilibrium, int how_many, vector<transformation>& transformations);
+void find_equilibrium_single_shot_transformations_tp(int grid_size, int divisions, int time_to_equilibrium, int how_many, vector<transformation>& transformations, vector<f_coordinates>& pq);
+void TCP_scattershot(vector <transformation>& trans, int previous_frame[], int previous_frame_labels[], vector<cluster>& previous_frame_clusters, int current_frame[], int current_frame_labels[], vector<cluster>& current_frame_clusters, int grid_size, int how_many, double p, double q);
 
 // -----------------------------------This and That ------------------------------------------------//
 

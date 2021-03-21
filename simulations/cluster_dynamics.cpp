@@ -1591,31 +1591,87 @@ void find_equilibrium_single_shot_transformations_dp(int grid_size, float birth_
 	cout << endl << "Transformation Finding Time: " << duration.count() << " seconds" << endl;
 }
 
-void find_equilibrium_single_shot_transformations_tp(int grid_size, float birth_probability, float feedback_strength, int time_to_equilibrium,
-	int how_many, vector<transformation>& transformations){
+void find_equilibrium_single_shot_transformations_tp(int grid_size, int divisions, int time_to_equilibrium,
+	int how_many, vector<transformation>& transformations, vector<f_coordinates>& pq)
+{
 
 	// Simulates TP for the specified parameters and collects the specified number of transformations from the steady state
 
-	int seed = std::random_device{}();
-	rng.seed(seed);
+  std::vector<vector<double>> vec; //Stores final output.
+
+  ofstream output_dels;
+  // Creating a file instance called output to store output data as CSV.
+
+  stringstream peon, peoff, div, quint, quaffle, gangsta, tallaq;
+
+  peon << setprecision(4) << pq[0].x;
+  quint << setprecision(3) << pq[0].y;
+  //p_en << setprecision(3) << p_end;
+  // setprecision() is a stream manipulator that sets the decimal precision of a variable.
+  div << divisions;
+  peoff << pq[divisions-1].x;
+  quaffle << pq[divisions-1].y;
+  gangsta << grid_size; tallaq << how_many;
+
+  output_dels.open("dump/TCP_delS_G_" + gangsta.str() + "_N_" + tallaq.str() + "_p1_" +  peon.str() + "_q1_" + quint.str() + "_Div_" + div.str() + "_p2_"+ peoff.str() + "_q2_"+ quaffle.str() + ".csv");
 
 
-	int previous_frame[grid_size*grid_size];
-	int previous_frame_labels[grid_size*grid_size];
-	vector<cluster> previous_frame_clusters;
+  #pragma omp parallel
+  {
+    vector<vector<double>> collateral;
 
-	int current_frame[grid_size*grid_size];
-	int current_frame_labels[grid_size*grid_size];
-	vector<cluster> current_frame_clusters;
+    int previous_frame[grid_size*grid_size];
+  	int previous_frame_labels[grid_size*grid_size];
+  	vector<cluster> previous_frame_clusters;
 
-	random_frame(current_frame, grid_size); // initialize the current frame
-	zeros(current_frame_labels,grid_size); // initialize labels for the current frame
+  	int current_frame[grid_size*grid_size];
+  	int current_frame_labels[grid_size*grid_size];
+  	vector<cluster> current_frame_clusters;
 
-	simulate_tp(current_frame, grid_size, birth_probability, feedback_strength, time_to_equilibrium); // simulate TP to reach steady state
+    #pragma omp for nowait schedule(static)
+    for(int i= 0; i < divisions; i++)
+    {
 
-	auto start = high_resolution_clock::now();
 
-	find_clusters(current_frame,current_frame_labels,current_frame_clusters,grid_size); // find clusters from the current frame
+      int seed = std::random_device{}();
+  	  rng.seed(seed);
+
+      random_frame(current_frame, grid_size); // initialize the current frame
+    	zeros(current_frame_labels,grid_size); // initialize labels for the current frame
+
+    	simulate_tp(current_frame, grid_size, pq[i].x, pq[i].y, time_to_equilibrium); // simulate TP to reach steady state
+
+      find_clusters(current_frame,current_frame_labels,current_frame_clusters,grid_size); // find clusters from the current frame
+
+      vector<transformation> trans; //To be used in collecting |del s| data.
+      TCP_scattershot(trans, previous_frame, previous_frame_labels, previous_frame_clusters,
+  		current_frame, current_frame_labels, current_frame_clusters, grid_size, how_many, pq[i].x, pq[i].y);
+      // TCP_scattershot() is invaluable to completelting these simulations.
+
+      for(int j=0; j<trans.size(); j++)
+      {
+        //Formatting trans data into a more appropriate format.
+        collateral.push_back({pq[i].x, pq[i].y, j, trans[j].before, trans[j].after});
+        //Filled in as p, q, #, s, s + del(s).
+      }
+
+    }
+    #pragma omp for schedule(static) ordered
+    for(int i=0; i< omp_get_num_threads(); i++)
+    {
+      #pragma omp ordered
+        vec.insert(vec.end(), collateral.begin(), collateral.end());
+        // Inserting critical exponent data for each grid size in order.
+        stringstream message3;
+        message3 << "Is this happening?\n";
+        cout << message3.str();
+    }
+
+  }
+
+
+
+	/* find_clusters(current_frame,current_frame_labels,current_frame_clusters,grid_size); // find clusters from the current frame
 
 	while (transformations.size() < how_many){ // loop till we have the specified number of transformations
 
@@ -1639,12 +1695,68 @@ void find_equilibrium_single_shot_transformations_tp(int grid_size, float birth_
 		find_transformations_single_shot(transformations,
 			previous_frame, previous_frame_labels, previous_frame_clusters,
 			current_frame, current_frame_labels, current_frame_clusters, grid_size); // find the transformation and accumulate into the transformations vector
+	} */
+
+  cout << "| p , q, # Tr No , s ,  s + del(s) |\n";
+  output_dels << " p , q, # Tr No, s,  s + del(s) \n";
+
+  for (int i = 0; i < vec.size(); i++)
+  {
+    if(i%3333 ==1)
+    {
+    cout << setprecision(5) << vec[i][0] << "  " << setprecision(5) << vec[i][1] << "  " << setprecision(12) << vec[i][2] << "  " << setprecision(10) << vec[i][3] << "  " << setprecision(10) << vec[i][4] << endl;
+    }
+  }
+  // Saving to aforementioned CSV
+
+  for (int i = 0; i < vec.size(); i++)
+  {
+    output_dels << setprecision(8) << vec[i][0] << "," << setprecision(5) << vec[i][1] << "," << setprecision(12) << vec[i][2] << "," << setprecision(11) << vec[i][3] << "," << setprecision(11) << vec[i][4]  << endl;
+  }
+  output_dels.close();
+
+
+}
+
+void TCP_scattershot(vector <transformation>& trans, int previous_frame[], int previous_frame_labels[], vector<cluster>& previous_frame_clusters,
+int current_frame[], int current_frame_labels[], vector<cluster>& current_frame_clusters, int grid_size, int how_many, double p, double q)
+{
+
+  auto start = high_resolution_clock::now();
+
+	while (trans.size() < how_many){ // loop till we have the specified number of transformations
+
+		for (int i=0; i<grid_size; i++){
+			for (int j=0; j<grid_size; j++){
+        // scan the current frame and duplicate it into the previous frame
+				previous_frame[grid_size*i+j] = current_frame[grid_size*i+j];
+				previous_frame_labels[grid_size*i+j] = current_frame_labels[grid_size*i+j];
+			}
+		}
+
+		previous_frame_clusters = current_frame_clusters; // duplicate the clusters too
+
+		tp_update(current_frame, grid_size, p, q); // make a single update to the current frame
+
+		current_frame_clusters.clear(); // wash the stale clusters off the current frame (since it has been updated now)
+		zeros(current_frame_labels,grid_size); // wash the labels too
+
+		find_clusters(current_frame,current_frame_labels,current_frame_clusters,grid_size);
+		// find the clusters and labels of the current frame (after update) again
+
+		find_transformations_single_shot(trans,
+			previous_frame, previous_frame_labels, previous_frame_clusters,
+			current_frame, current_frame_labels, current_frame_clusters, grid_size); // find the transformation and accumulate into the transformations vector
 	}
 
-	auto stop = high_resolution_clock::now();
+  auto stop = high_resolution_clock::now();
 	auto duration = duration_cast<seconds>(stop - start);
 
-	cout << endl << "Transformation Finding Time: " << duration.count() << " seconds" << endl;
+  stringstream msg; msg << "For (p,q) pair values as:\t(" << setprecision(6) << p << setprecision(5) << q << ")\t Transformation Finding Time: " << duration.count() << " seconds" << endl;
+
+  cout << msg.str();
+
+  return; //Exit method once desired number of |del s| values have been collected.
 }
 
 // -----------------------------------This and That ------------------------------------------------//
@@ -3446,7 +3558,7 @@ void finite_scaling_crtexp_TCP(int grid_sizes[], double p, double q, string type
 
     for (int i = 0; i < output.size(); i++)
     {
-      outputfinsc << setprecision(8) << output[i][0] << "," << setprecision(5) << output[i][1] << "  " << setprecision(8) << output[i][2] << "," << setprecision(3) << output[i][3] << "," << setprecision(16) << output[i][4] << "," << setprecision(16) << output[i][5] << endl;
+      outputfinsc << setprecision(8) << output[i][0] << "," << setprecision(5) << output[i][1] << "," << setprecision(8) << output[i][2] << "," << setprecision(3) << output[i][3] << "," << setprecision(16) << output[i][4] << "," << setprecision(16) << output[i][5] << endl;
     }
     outputfinsc.close();
 
